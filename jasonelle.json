@@ -1,0 +1,67 @@
+{
+  "$jason": {
+    "head": {
+      "title": "Fun-takshari",
+      "description": "A fun and challenging word chain game.",
+      "actions": {
+        "$load": {
+          "type": "$admob.initialize",
+          "options": {
+            "is_testing": false
+          },
+          "success": {
+            "type": "$admob.preload",
+            "options": {
+              "rewarded": {
+                "unit_id": "ca-app-pub-8453210911071951/9278861623"
+              },
+              "interstitial": {
+                "unit_id": "ca-app-pub-8453210911071951/6041490043"
+              }
+            }
+          }
+        },
+        "show_reward_ad": {
+          "type": "$admob.show",
+          "options": {
+            "type": "rewarded",
+            "unit_id": "ca-app-pub-8453210911071951/9278861623"
+          },
+          "success": {
+            "type": "$render"
+          },
+          "error": {
+            "type": "$util.toast",
+            "options": {
+              "text": "Ad not ready. Please try again in a moment."
+            }
+          }
+        },
+        "show_interstitial_ad": {
+          "type": "$admob.show",
+          "options": {
+            "type": "interstitial",
+            "unit_id": "ca-app-pub-8453210911071951/6041490043"
+          }
+        }
+      },
+      "templates": {
+        "body": {
+          "background": {
+            "type": "html",
+            "url": "YOUR_GAME_URL_HERE" 
+          },
+          "footer": {
+            "type": "banner",
+            "options": {
+              "unit_id": "ca-app-pub-8453210911071951/4249896227"
+            }
+          }
+        }
+      }
+    },
+    "body": {
+      "trigger": "$load"
+    }
+  }
+}

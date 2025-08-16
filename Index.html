@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fun-takshari: Play and Learn</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+        :root{--primary-color:#4a90e2;--secondary-color:#f5a623;--correct-color:#7ed321;--wrong-color:#d0021b;--light-bg:#f8f9fa;--dark-text:#333;--light-text:#fff}
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        body{font-family:'Nunito',sans-serif;background:linear-gradient(135deg,#f3f5f7,#e0e6f0);display:flex;justify-content:center;align-items:center;color:var(--dark-text);text-align:center;-webkit-tap-highlight-color:transparent}
+        .game-container{width:90%;max-width:500px;background:var(--light-text);padding:20px;border-radius:25px;box-shadow:0 10px 30px rgba(0,0,0,.1);position:relative;display:flex;flex-direction:column;height:95%;max-height:800px;}
+        .screen{display:none; height:100%; flex-direction:column;}
+        .screen.active{display:flex;}
+        #welcome-screen, #game-over-screen { overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;}
+        #welcome-screen::-webkit-scrollbar, #game-over-screen::-webkit-scrollbar { display: none; }
+        #game-screen { overflow: hidden; }
+        .game-content { flex-grow: 1; display: flex; flex-direction: column; min-height: 0; }
+        #word-list-container { flex-grow: 1; overflow-y: auto; scrollbar-width: thin; }
+        #keyboard-container, .game-header, .game-area, #submit-btn { flex-shrink: 0; }
+        h1{font-weight:900;font-size:2.5rem;color:var(--primary-color);margin-bottom:15px; cursor: pointer; user-select: none;}
+        h2{font-size:1.3rem;color:var(--dark-text);margin-bottom:20px}
+        h3{color:#777;font-size:1rem;text-transform:uppercase;border-bottom:2px solid #eee;padding-bottom:5px;margin-bottom:10px;}
+        .input-group{margin-bottom:15px;text-align:left; position: relative;}
+        label{display:block;margin-bottom:5px;font-weight:700;color:#555}
+        input[type="text"],input[type="number"]{width:100%;padding:12px;border:2px solid #ddd;border-radius:12px;font-size:1.1rem;font-family:'Nunito',sans-serif;box-sizing:border-box;transition:border-color .3s}
+        input[readonly] { background-color: #f0f0f0; cursor: default; }
+        .btn{display:block;width:100%;padding:12px;border:none;border-radius:12px;background-color:var(--primary-color);color:var(--light-text);font-size:1.2rem;font-weight:700;cursor:pointer;margin-top:10px}
+        .btn:active{transform:translateY(1px)}.btn-secondary{background-color:var(--secondary-color)}.btn:disabled{background-color:#aaa;cursor:not-allowed;transform:none}
+        .game-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;font-size:1.2rem;font-weight:700;}
+        #lifelines-display{font-size:1.5rem}#score-display{color:var(--primary-color)}
+        #timer-display{background:var(--secondary-color);color:var(--light-text);padding:8px 15px;border-radius:20px}
+        .game-area{background-color:var(--light-bg);padding:20px;border-radius:15px;margin-bottom:15px;}
+        #prompt-display{font-size:1.6rem;font-weight:700;margin-bottom:15px}#prompt-letter{color:var(--correct-color);font-weight:900;font-size:2.2rem}
+        #word-list, #final-word-list{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:25px}
+        #word-list span, #final-word-list span{background:#e9ecef;padding:5px 12px;border-radius:15px;color:#555;font-size:.9rem}
+        .game-over h2{font-size:1.5rem;color:var(--dark-text); margin-top:0;}
+        #final-score{font-size:3rem;font-weight:900;color:var(--correct-color);margin:10px 0 20px 0}
+        .final-stats { display: flex; justify-content: space-around; width: 100%; background: #f8f9fa; padding: 10px; border-radius: 12px; margin-bottom: 20px; }
+        .stat-item { text-align: center; } .stat-item p { margin: 0; font-weight: 700; color: #555; } .stat-item span { font-size: 1.5rem; color: var(--primary-color); font-weight: 900; }
+        #final-word-list-container{flex-grow:1;min-height:50px;}
+        .game-over-actions { display: flex; justify-content: space-between; gap: 10px; width: 100%; margin-top: auto; padding-top: 15px;}
+        #history-container{margin-top:25px;max-height:150px;overflow-y:auto;border:1px solid #ddd;padding:10px;border-radius:10px;}
+        #history-list{list-style:none;padding:0;margin:0;font-size:0.9rem;color:#555; text-align: left;}
+        #history-list li{padding:6px 4px;border-bottom:1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;}
+        #difficulty-selector { display: flex; justify-content: space-around; margin: 20px 0; background: #f0f0f0; padding: 5px; border-radius: 15px; }
+        #difficulty-selector label { cursor: pointer; padding: 8px 15px; border-radius: 12px; transition: all 0.3s; font-weight: 700; }
+        input[type="radio"] { display: none; }
+        input[type="radio"]:checked + label { background-color: var(--primary-color); color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        #keyboard-container{padding:5px 0;user-select:none;}
+        .keyboard-row{display:flex;justify-content:center;margin:5px 0;}
+        .key{font-family:'Nunito',sans-serif;height:45px;min-width:35px;margin:0 2px;border-radius:5px;border:none;background-color:#e0e6f0;font-size:1.2rem;font-weight:700;cursor:pointer;display:flex;justify-content:center;align-items:center;}
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; display: none; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 20px; width: 90%; max-width: 500px; text-align: center;}
+        .quit-dialog-buttons { display: flex; gap: 15px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="screen active">
+            <h1 id="main-title">Fun-takshari</h1><h2>Play and Learn</h2>
+            <div id="admin-panel" style="display:none;"><h4>Admin: Add a Word</h4><div class="input-group"><label for="admin-word">English Word</label><input type="text" id="admin-word"></div><div class="input-group"><label for="admin-meaning">Hindi Meaning</label><input type="text" id="admin-meaning"></div><button id="add-word-btn" class="btn btn-secondary">Add to Local Bank</button></div>
+            <div class="input-group"><label for="player-name">Enter Your Name</label><input type="text" id="player-name" placeholder="e.g., Priya"></div>
+            <div class="input-group"><label for="timer-setup">Set Timer (seconds)</label><input type="number" id="timer-setup" value="30"></div>
+            <label>Select Difficulty</label>
+            <div id="difficulty-selector"><input type="radio" id="diff-easy" name="difficulty" value="easy"><label for="diff-easy">Easy</label><input type="radio" id="diff-medium" name="difficulty" value="medium" checked><label for="diff-medium">Medium</label><input type="radio" id="diff-hard" name="difficulty" value="hard"><label for="diff-hard">Hard</label></div>
+            <button id="start-game-btn" class="btn">Start Game</button>
+            <div id="history-container"><h3>Your Past Scores</h3><ul id="history-list"></ul></div>
+        </div>
+        
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div class="game-content">
+                <div class="game-header"><div id="lifelines-display"></div><div id="timer-display"></div><div class="score">Score: <span id="score-display">0</span></div></div>
+                <div class="game-area">
+                    <div id="system-word-display"></div>
+                    <div id="prompt-display">Your word starts with: <span id="prompt-letter"></span></div>
+                    <div class="input-group"><label for="english-word-input">English Word</label><input type="text" id="english-word-input" placeholder="Use the keyboard below..." readonly></div>
+                </div>
+                <button id="submit-btn" class="btn btn-secondary">Submit</button>
+                <div id="word-list-container"><h3>USED WORDS</h3><div id="word-list"></div></div>
+            </div>
+            <div id="keyboard-container"></div>
+        </div>
+        
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen">
+             <h1 id="game-over-title">Game Over!</h1>
+             <h2 id="player-final-name"></h2>
+             <p>Your Final Score is:</p><div id="final-score"></div>
+             <div class="final-stats"><div class="stat-item"><p>Difficulty</p><span id="final-difficulty"></span></div><div class="stat-item"><p>Total Time</p><span id="total-time"></span></div></div>
+             <div id="final-word-list-container"><h3>Words You Played</h3><div id="final-word-list"></div></div>
+             <div class="game-over-actions"><button id="share-btn" class="btn">Share</button><button id="play-again-btn" class="btn btn-secondary">Play Again</button></div>
+        </div>
+    </div>
+
+    <!-- Quit Game Modal -->
+    <div id="quit-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="quit-modal-title">Quit Game?</h2>
+            <p id="quit-modal-text">Are you sure you want to exit?</p>
+            <div class="quit-dialog-buttons">
+                <button id="quit-yes-btn" class="btn btn-secondary">Yes</button>
+                <button id="quit-no-btn" class="btn">No</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- DOM ELEMENTS ---
+    const allScreens = document.querySelectorAll('.screen');
+    const screens = { welcome: document.getElementById('welcome-screen'), game: document.getElementById('game-screen'), gameOver: document.getElementById('game-over-screen')};
+    const playerNameInput = document.getElementById('player-name');
+    const timerSetupInput = document.getElementById('timer-setup');
+    const startGameBtn = document.getElementById('start-game-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const playAgainBtn = document.getElementById('play-again-btn');
+    const shareBtn = document.getElementById('share-btn');
+    const lifelinesDisplay = document.getElementById('lifelines-display');
+    const timerDisplay = document.getElementById('timer-display');
+    const scoreDisplay = document.getElementById('score-display');
+    const systemWordDisplay = document.getElementById('system-word-display');
+    const promptLetter = document.getElementById('prompt-letter');
+    const englishWordInput = document.getElementById('english-word-input');
+    const wordList = document.getElementById('word-list');
+    const playerFinalName = document.getElementById('player-final-name');
+    const finalScoreDisplay = document.getElementById('final-score');
+    const finalWordList = document.getElementById('final-word-list');
+    const gameOverTitle = document.getElementById('game-over-title');
+    const mainTitle = document.getElementById('main-title');
+    const adminPanel = document.getElementById('admin-panel');
+    const adminWordInput = document.getElementById('admin-word');
+    const adminMeaningInput = document.getElementById('admin-meaning');
+    const addWordBtn = document.getElementById('add-word-btn');
+    const historyContainer = document.getElementById('history-container');
+    const historyList = document.getElementById('history-list');
+    const keyboardContainer = document.getElementById('keyboard-container');
+    const finalDifficultyDisplay = document.getElementById('final-difficulty');
+    const totalTimeDisplay = document.getElementById('total-time');
+    const quitModal = document.getElementById('quit-modal');
+    const quitModalTitle = document.getElementById('quit-modal-title');
+    const quitModalText = document.getElementById('quit-modal-text');
+    const quitYesBtn = document.getElementById('quit-yes-btn');
+    const quitNoBtn = document.getElementById('quit-no-btn');
+
+    // --- GAME STATE ---
+    let score, lifelines, timePerTurn, timerInterval, currentLetter, usedWords, playerName;
+    let isGameActive = false;
+    let gameDifficulty, gameStartTime;
+    let letterPromptStats = {};
+    let timeLeft;
+    const screenHistory = ['welcome-screen'];
+
+    // --- [RESTORED] Massively Expanded Word Bank ---
+    const WORD_BANK = {
+        'a': [{w:'apple',p:'सेब'},{w:'about',p:'बारे में'},{w:'above',p:'ऊपर'},{w:'across',p:'पार'},{w:'act',p:'कार्य'},{w:'add',p:'जोड़ना'},{w:'afraid',p:'डरा हुआ'},{w:'after',p:'बाद में'},{w:'again',p:'फिर से'},{w:'against',p:'खिलाफ'},{w:'age',p:'उम्र'},{w:'ago',p:'पहले'},{w:'agree',p:'सहमत'},{w:'air',p:'हवा'},{w:'all',p:'सब'},{w:'allow',p:'अनुमति'},{w:'almost',p:'लगभग'},{w:'alone',p:'अकेला'},{w:'along',p:'साथ में'},{w:'already',p:'पहले से'},{w:'also',p:'भी'},{w:'although',p:'यद्यपि'},{w:'always',p:'हमेशा'},{w:'among',p:'बीच में'},{w:'amount',p:'मात्रा'},{w:'and',p:'और'},{w:'anger',p:'गुस्सा'},{w:'animal',p:'जानवर'},{w:'another',p:'दूसरा'},{w:'answer',p:'उत्तर'},{w:'any',p:'कोई'},{w:'appear',p:'दिखाई'},{w:'area',p:'क्षेत्र'},{w:'argue',p:'बहस करना'},{w:'arm',p:'बांह'},{w:'around',p:'चारों ओर'},{w:'arrive',p:'पहुंचना'},{w:'art',p:'कला'},{w:'as',p:'जैसा'},{w:'ask',p:'पूछना'},{w:'at',p:'पर'},{w:'aunt',p:'चाची'},{w:'away',p:'दूर'}],
+        'b': [{w:'back',p:'वापस'},{w:'bad',p:'बुरा'},{w:'ball',p:'गेंद'},{w:'band',p:'पट्टी'},{w:'bank',p:'बैंक'},{w:'bar',p:'छड़'},{w:'base',p:'आधार'},{w:'bat',p:'बल्ला'},{w:'be',p:'होना'},{w:'bear',p:'भालू'},{w:'beat',p:'पीटना'},{w:'beautiful',p:'सुंदर'},{w:'beauty',p:'सुंदरता'},{w:'because',p:'क्योंकि'},{w:'become',p:'बनना'},{w:'bed',p:'बिस्तर'},{w:'before',p:'पहले'},{w:'begin',p:'शुरू'},{w:'behind',p:'पीछे'},{w:'believe',p:'विश्वास'},{w:'bell',p:'घंटी'},{w:'belong',p:'संबंधित'},{w:'below',p:'नीचे'},{w:'belt',p:'पेटी'},{w:'bench',p:'बेंच'},{w:'bend',p:'झुकना'},{w:'beside',p:'बगल में'},{w:'best',p:'सबसे अच्छा'},{w:'better',p:'बेहतर'},{w:'between',p:'बीच में'},{w:'big',p:'बड़ा'},{w:'bird',p:'पक्षी'},{w:'birth',p:'जन्म'},{w:'bit',p:'टुकड़ा'},{w:'bite',p:'काटना'},{w:'black',p:'काला'},{w:'blame',p:'दोष'},{w:'blanket',p:'कंबल'},{w:'bless',p:'आशीर्वाद'},{w:'blind',p:'अंधा'},{w:'block',p:'खंड'},{w:'blood',p:'खून'},{w:'blow',p:'फुंक मारना'},{w:'blue',p:'नीला'},{w:'board',p:'तख्ता'},{w:'boat',p:'नाव'},{w:'body',p:'शरीर'},{w:'boil',p:'उबालना'},{w:'bone',p:'हड्डी'},{w:'book',p:'किताब'},{w:'border',p:'सीमा'},{w:'born',p:'उत्पन्न होने वाली'},{w:'borrow',p:'उधार लेना'},{w:'both',p:'दोनों'},{w:'bother',p:'परेशान'},{w:'bottle',p:'बोतल'},{w:'bottom',p:'तल'},{w:'bounce',p:'उछाल'},{w:'box',p:'डिब्बा'},{w:'boy',p:'लड़का'},{w:'brain',p:'दिमाग'},{w:'branch',p:'शाखा'},{w:'brave',p:'बहादुर'},{w:'bread',p:'रोटी'},{w:'break',p:'टूटना'},{w:'breakfast',p:'नाश्ता'},{w:'breathe',p:'साँस लेना'},{w:'bridge',p:'पुल'},{w:'bright',p:'उज्ज्वल'},{w:'bring',p:'लाना'},{w:'broad',p:'चौड़ा'},{w:'brother',p:'भाई'},{w:'brown',p:'भूरा'},{w:'brush',p:'ब्रश'},{w:'build',p:'निर्माण'},{w:'burn',p:'जलना'},{w:'burst',p:'फटना'},{w:'bury',p:'दफनाना'},{w:'bus',p:'बस'},{w:'busy',p:'व्यस्त'},{w:'but',p:'लेकिन'},{w:'buy',p:'खरीदें'},{w:'by',p:'द्वारा'}],
+        'c': [{w:'cake',p:'केक'},{w:'call',p:'बुलाना'},{w:'calm',p:'शांत'},{w:'camera',p:'कैमरा'},{w:'camp',p:'शिविर'},{w:'can',p:'सकना'},{w:'candle',p:'मोमबत्ती'},{w:'cap',p:'टोपी'},{w:'car',p:'गाड़ी'},{w:'card',p:'कार्ड'},{w:'care',p:'ध्यान'},{w:'careful',p:'सावधान'},{w:'carry',p:'ले जाना'},{w:'case',p:'मामला'},{w:'cash',p:'नकद'},{w:'cat',p:'बिल्ली'},{w:'catch',p:'पकड़ना'},{w:'cause',p:'कारण'},{w:'celebrate',p:'जश्न'},{w:'center',p:'केंद्र'},{w:'certain',p:'निश्चित'},{w:'chair',p:'कुर्सी'},{w:'challenge',p:'चुनौती'},{w:'chance',p:'मौका'},{w:'change',p:'बदलना'},{w:'character',p:'चरित्र'},{w:'charge',p:'आरोप'},{w:'chart',p:'चार्ट'},{w:'chase',p:'पीछा'},{w:'cheap',p:'सस्ता'},{w:'check',p:'जाँच'},{w:'cheek',p:'गाल'},{w:'cheer',p:'हर्ष'},{w:'cheese',p:'पनीर'},{w:'chest',p:'छाती'},{w:'chicken',p:'मुर्गी'},{w:'chief',p:'प्रमुख'},{w:'child',p:'बच्चा'},{w:'choice',p:'विकल्प'},{w:'choose',p:'चुनना'},{w:'circle',p:'वृत्त'},{w:'city',p:'शहर'},{w:'claim',p:'दावा'},{w:'class',p:'कक्षा'},{w:'clean',p:'साफ'},{w:'clear',p:'स्पष्ट'},{w:'climb',p:'चढ़ना'},{w:'clock',p:'घड़ी'},{w:'close',p:'बंद'},{w:'cloth',p:'कपड़ा'},{w:'cloud',p:'बादल'},{w:'club',p:'क्लब'},{w:'coat',p:'कोट'},{w:'coffee',p:'कॉफ़ी'},{w:'cold',p:'ठंडा'},{w:'collect',p:'इकट्ठा'},{w:'college',p:'कॉलेज'},{w:'color',p:'रंग'},{w:'come',p:'आना'},{w:'common',p:'आम'},{w:'company',p:'कंपनी'},{w:'compare',p:'तुलना'},{w:'complain',p:'शिकायत'},{w:'complete',p:'पूरा'},{w:'computer',p:'संगणक'},{w:'concern',p:'चिंता'},{w:'confirm',p:'पुष्टि'},{w:'connect',p:'जोड़ना'},{w:'consider',p:'विचार'},{w:'contain',p:'शामिल'},{w:'continue',p:'जारी'},{w:'control',p:'नियंत्रण'},{w:'cook',p:'पकाना'},{w:'cool',p:'ठंडा'},{w:'copy',p:'प्रतिलिपि'},{w:'corner',p:'कोना'},{w:'correct',p:'सही'},{w:'cost',p:'लागत'},{w:'cotton',p:'कपास'},{w:'couch',p:'सोफ़ा'},{w:'cough',p:'खांसी'},{w:'could',p:'सका'},{w:'count',p:'गिनना'},{w:'country',p:'देश'},{w:'couple',p:'जोड़ा'},{w:'courage',p:'साहस'},{w:'course',p:'कोर्स'},{w:'court',p:'न्यायालय'},{w:'cover',p:'आवरण'},{w:'cow',p:'गाय'},{w:'crack',p:'दरार'},{w:'crash',p:'टकराव'},{w:'create',p:'बनाना'},{w:'credit',p:'श्रेय'},{w:'crime',p:'अपराध'},{w:'crisis',p:'संकट'},{w:'criticize',p:'आलोचना'},{w:'crop',p:'फसल'},{w:'cross',p:'पार'},{w:'crowd',p:'भीड़'},{w:'cruel',p:'क्रूर'},{w:'cry',p:'रोना'},{w:'cup',p:'कप'},{w:'cure',p:'इलाज'},{w:'curious',p:'जिज्ञासु'},{w:'current',p:'वर्तमान'},{w:'curtain',p:'पर्दा'},{w:'curve',p:'वक्र'},{w:'custom',p:'रिवाज'},{w:'cut',p:'काटना'},{w:'cycle',p:'चक्र'}],
+        'd': [{w:'dad',p:'पिता'},{w:'daily',p:'दैनिक'},{w:'damage',p:'क्षति'},{w:'dance',p:'नृत्य'},{w:'danger',p:'खतरा'},{w:'dark',p:'अंधेरा'},{w:'date',p:'तारीख'},{w:'daughter',p:'बेटी'},{w:'day',p:'दिन'},{w:'dead',p:'मृत'},{w:'deal',p:'सौदा'},{w:'dear',p:'प्रिय'},{w:'death',p:'मौत'},{w:'debate',p:'बहस'},{w:'debt',p:'कर्ज'},{w:'decade',p:'दशक'},{w:'decide',p:'तय'},{w:'decision',p:'निर्णय'},{w:'deep',p:'गहरा'},{w:'defend',p:'रक्षा'},{w:'define',p:'परिभाषित'},{w:'degree',p:'डिग्री'},{w:'delay',p:'देरी'},{w:'deliver',p:'पहुंचाना'},{w:'demand',p:'मांग'},{w:'deny',p:'इनकार'},{w:'depend',p:'निर्भर'},{w:'depth',p:'गहराई'},{w:'describe',p:'वर्णन'},{w:'design',p:'डिज़ाइन'},{w:'desire',p:'इच्छा'},{w:'desk',p:'डेस्क'},{w:'destroy',p:'नष्ट'},{w:'detail',p:'विस्तार'},{w:'develop',p:'विकसित'},{w:'device',p:'युक्ति'},{w:'die',p:'मरना'},{w:'diet',p:'आहार'},{w:'differ',p:'भिन्न'},{w:'difficult',p:'मुश्किल'},{w:'dig',p:'खोदना'},{w:'dinner',p:'रात का खाना'},{w:'direct',p:'प्रत्यक्ष'},{w:'direction',p:'दिशा'},{w:'dirt',p:'गंदगी'},{w:'discover',p:'खोज'},{w:'discuss',p:'चर्चा'},{w:'disease',p:'रोग'},{w:'dish',p:'व्यंजन'},{w:'dismiss',p:'खारिज'},{w:'display',p:'प्रदर्शन'},{w:'distance',p:'दूरी'},{w:'divide',p:'विभाजित'},{w:'do',p:'करना'},{w:'doctor',p:'चिकित्सक'},{w:'document',p:'दस्तावेज़'},{w:'dog',p:'कुत्ता'},{w:'door',p:'दरवाजा'},{w:'dot',p:'बिंदु'},{w:'double',p:'दोगुना'},{w:'doubt',p:'संदेह'},{w:'down',p:'नीचे'},{w:'draft',p:'प्रारूप'},{w:'drag',p:'खींचना'},{w:'draw',p:'खींचना'},{w:'dream',p:'सपना'},{w:'dress',p:'पोशाक'},{w:'drink',p:'पीना'},{w:'drive',p:'चलाना'},{w:'drop',p:'बूंद'},{w:'drug',p:'दवा'},{w:'dry',p:'सूखा'},{w:'duck',p:'बत्तख'},{w:'due',p:'कारण'},{w:'during',p:'दौरान'},{w:'dust',p:'धूल'},{w:'duty',p:'कर्तव्य'}],
+        'e': [{w:'each',p:'प्रत्येक'},{w:'eager',p:'उत्सुक'},{w:'ear',p:'कान'},{w:'early',p:'जल्दी'},{w:'earn',p:'कमाना'},{w:'earth',p:'पृथ्वी'},{w:'ease',p:'आसानी'},{w:'east',p:'पूर्व'},{w:'easy',p:'आसान'},{w:'eat',p:'खाना'},{w:'echo',p:'गूंज'},{w:'edge',p:'किनारा'},{w:'edit',p:'संपादित'},{w:'educate',p:'शिक्षित'},{w:'education',p:'शिक्षा'},{w:'effect',p:'प्रभाव'},{w:'effort',p:'प्रयास'},{w:'egg',p:'अंडा'},{w:'eight',p:'आठ'},{w:'either',p:'या तो'},{w:'elbow',p:'कोहनी'},{w:'elect',p:'चुनाव'},{w:'electric',p:'बिजली'},{w:'elegant',p:'सुंदर'},{w:'element',p:'तत्व'},{w:'elephant',p:'हाथी'},{w:'else',p:'अन्य'},{w:'email',p:'ईमेल'},{w:'embrace',p:'गले लगाना'},{w:'emerge',p:'उभरना'},{w:'emotion',p:'भावना'},{w:'employ',p:'रोजगार'},{w:'empty',p:'खाली'},{w:'enable',p:'सक्षम'},{w:'end',p:'अंत'},{w:'enemy',p:'दुश्मन'},{w:'energy',p:'ऊर्जा'},{w:'engage',p:'संलग्न'},{w:'engine',p:'इंजन'},{w:'enjoy',p:'आनंद लेना'},{w:'enormous',p:'विशाल'},{w:'enough',p:'पर्याप्त'},{w:'ensure',p:'सुनिश्चित'},{w:'enter',p:'प्रवेश'},{w:'entire',p:'संपूर्ण'},{w:'entry',p:'प्रविष्टि'},{w:'environment',p:'पर्यावरण'},{w:'equal',p:'बराबर'},{w:'equip',p:'लैस'},{w:'escape',p:'बचना'},{w:'especially',p:'विशेषकर'},{w:'essay',p:'निबंध'},{w:'essential',p:'आवश्यक'},{w:'establish',p:'स्थापित'},{w:'estate',p:'संपत्ति'},{w:'estimate',p:'अनुमान'},{w:'etc',p:'आदि'},{w:'ethnic',p:'जातीय'},{w:'even',p:'यहां तक ​​कि'},{w:'evening',p:'शाम'},{w:'event',p:'घटना'},{w:'eventually',p:'अंत में'},{w:'ever',p:'कभी'},{w:'every',p:'हर'},{w:'evidence',p:'सबूत'},{w:'evil',p:'बुराई'},{w:'exact',p:'सटीक'},{w:'examine',p:'जांचना'},{w:'example',p:'उदाहरण'},{w:'excellent',p:'उत्कृष्ट'},{w:'except',p:'सिवाय'},{w:'exchange',p:'échange'},{w:'excite',p:'उत्तेजित'},{w:'excuse',p:'बहाना'},{w:'exercise',p:'व्यायाम'},{w:'exist',p:'मौजूद'},{w:'exit',p:'निकास'},{w:'expand',p:'विस्तार'},{w:'expect',p:'उम्मीद'},{w:'expense',p:'खर्च'},{w:'experience',p:'अनुभव'},{w:'explain',p:'समझाना'},{w:'explore',p:'अन्वेषण'},{w:'export',p:'निर्यात'},{w:'expose',p:'बेनकाब'},{w:'express',p:'व्यक्त'},{w:'extend',p:'विस्तार'},{w:'extent',p:'हद'},{w:'external',p:'बाहरी'},{w:'extra',p:'अतिरिक्त'},{w:'extreme',p:'चरम'},{w:'eye',p:'आंख'}],
+        'f': [{w:'fabric',p:'कपड़ा'},{w:'face',p:'चेहरा'},{w:'fact',p:'तथ्य'},{w:'factor',p:'कारक'},{w:'factory',p:'कारखाना'},{w:'fail',p:'विफल'},{w:'failure',p:'विफलता'},{w:'fair',p:'निष्पक्ष'},{w:'faith',p:'विश्वास'},{w:'fall',p:'गिरना'},{w:'false',p:'झूठा'},{w:'family',p:'परिवार'},{w:'famous',p:'प्रसिद्ध'},{w:'fan',p:'पंखा'},{w:'fantasy',p:'कल्पना'},{w:'far',p:'दूर'},{w:'farm',p:'खेत'},{w:'farmer',p:'किसान'},{w:'fashion',p:'फैशन'},{w:'fast',p:'तेज'},{w:'fat',p:'मोटा'},{w:'father',p:'पिता'},{w:'fault',p:'दोष'},{w:'favor',p:'एहसान'},{w:'favorite',p:'पसंदीदा'},{w:'fear',p:'डर'},{w:'feature',p:'सुविधा'},{w:'federal',p:'संघीय'},{w:'fee',p:'शुल्क'},{w:'feed',p:'खिलाना'},{w:'feel',p:'महसूस'},{w:'female',p:'महिला'},{w:'fence',p:'बाड़'},{w:'festival',p:'त्योहार'},{w:'fever',p:'बुखार'},{w:'few',p:'कुछ'},{w:'fiber',p:'फाइबर'},{w:'fiction',p:'उपन्यास'},{w:'field',p:'खेत'},{w:'fierce',p:'भयंकर'},{w:'fifteen',p:'पंद्रह'},{w:'fifth',p:'पांचवां'},{w:'fifty',p:'पचास'},{w:'fight',p:'लड़ाई'},{w:'figure',p:'आकृति'},{w:'file',p:'फ़ाइल'},{w:'fill',p:'भरना'},{w:'film',p:'फिल्म'},{w:'final',p:'अंतिम'},{w:'finance',p:'वित्त'},{w:'find',p:'खोज'},{w:'fine',p:'ठीक'},{w:'finger',p:'उंगली'},{w:'finish',p:'समाप्त'},{w:'fire',p:'आग'},{w:'firm',p:'फर्म'},{w:'first',p:'पहला'},{w:'fish',p:'मछली'},{w:'fit',p:'फिट'},{w:'five',p:'पांच'},{w:'fix',p:'ठीक'},{w:'flag',p:'झंडा'},{w:'flame',p:'लौ'},{w:'flash',p:'फ्लैश'},{w:'flat',p:'समतल'},{w:'flavor',p:'स्वाद'},{w:'flee',p:'भागना'},{w:'flesh',p:'मांस'},{w:'flight',p:'उड़ान'},{w:'float',p:'तैरना'},{w:'flood',p:'बाढ़'},{w:'floor',p:'मंजिल'},{w:'flow',p:'प्रवाह'},{w:'flower',p:'फूल'},{w:'fly',p:'उड़ना'},{w:'focus',p:'ध्यान'},{w:'fog',p:'कोहरा'},{w:'fold',p:'मोड़ना'},{w:'folk',p:'लोक'},{w:'follow',p:'पालन'},{w:'food',p:'भोजन'},{w:'fool',p:'मूर्ख'},{w:'foot',p:'पैर'},{w:'for',p:'के लिये'},{w:'force',p:'बल'},{w:'foreign',p:'विदेश'},{w:'forest',p:'जंगल'},{w:'forget',p:'भूलना'},{w:'forgive',p:'माफ करना'},{w:'fork',p:'कांटा'},{w:'form',p:'रूप'},{w:'formal',p:'औपचारिक'},{w:'fortune',p:'भाग्य'},{w:'forward',p:'आगे'},{w:'foundation',p:'नींव'},{w:'four',p:'चार'},{w:'frame',p:'ढांचा'},{w:'free',p:'मुक्त'},{w:'freedom',p:'आजादी'},{w:'freeze',p:'जमना'},{w:'fresh',p:'ताजा'},{w:'friend',p:'दोस्त'},{w:'from',p:'से'},{w:'front',p:'सामने'},{w:'fruit',p:'फल'},{w:'fuel',p:'ईंधन'},{w:'full',p:'पूर्ण'},{w:'fun',p:'मज़ा'},{w:'function',p:'समारोह'},{w:'fund',p:'निधि'},{w:'funny',p:'मजेदार'},{w:'future',p:'भविष्य'}],
+        'g': [{w:'gain',p:'लाभ'},{w:'galaxy',p:'आकाशगंगा'},{w:'gallery',p:'गेलरी'},{w:'game',p:'खेल'},{w:'gap',p:'अंतर'},{w:'garage',p:'गेराज'},{w:'garden',p:'बगीचा'},{w:'garlic',p:'लहसुन'},{w:'gas',p:'गैस'},{w:'gate',p:'द्वार'},{w:'gather',p:'इकट्ठा'},{w:'gear',p:'गियर'},{w:'gender',p:'लिंग'},{w:'gene',p:'जीन'},{w:'general',p:'सामान्य'},{w:'generate',p:'उत्पन्न'},{w:'generation',p:'पीढ़ी'},{w:'generous',p:'उदार'},{w:'genius',p:'प्रतिभा'},{w:'gentle',p:'कोमल'},{w:'gentleman',p:'सज्जन'},{w:'genuine',p:'वास्तविक'},{w:'gesture',p:'इशारा'},{w:'get',p:'पाना'},{w:'ghost',p:'भूत'},{w:'giant',p:'विशाल'},{w:'gift',p:'उपहार'},{w:'girl',p:'लड़की'},{w:'give',p:'देना'},{w:'glad',p:'प्रसन्न'},{w:'glance',p:'नज़र'},{w:'glass',p:'कांच'},{w:'global',p:'वैश्विक'},{w:'glove',p:'दस्ताना'},{w:'glow',p:'चमक'},{w:'glue',p:'गोंद'},{w:'go',p:'जाना'},{w:'goal',p:'लक्ष्य'},{w:'goat',p:'बकरी'},{w:'god',p:'भगवान'},{w:'gold',p:'सोना'},{w:'good',p:'अच्छा'},{w:'gossip',p:'गपशप'},{w:'govern',p:'शासन'},{w:'government',p:'सरकार'},{w:'grab',p:'पकड़ना'},{w:'grace',p:'कृपा'},{w:'grade',p:'ग्रेड'},{w:'gradually',p:'धीरे-धीरे'},{w:'graduate',p:'स्नातक'},{w:'grain',p:'अनाज'},{w:'grand',p:'भव्य'},{w:'grant',p:'अनुदान'},{w:'grape',p:'अंगूर'},{w:'grass',p:'घास'},{w:'grateful',p:'आभारी'},{w:'grave',p:'कब्र'},{w:'great',p:'महान'},{w:'green',p:'हरा'},{w:'greet',p:'नमस्ते'},{w:'grey',p:'धूसर'},{w:'grill',p:'ग्रिल'},{w:'grip',p:'पकड़'},{w:'grocery',p:'किराना'},{w:'ground',p:'ज़मीन'},{w:'group',p:'समूह'},{w:'grow',p:'बढ़ना'},{w:'growth',p:'विकास'},{w:'guarantee',p:'गारंटी'},{w:'guard',p:'रक्षक'},{w:'guess',p:'अनुमान'},{w:'guest',p:'अतिथि'},{w:'guide',p:'मार्गदर्शक'},{w:'guilty',p:'दोषी'},{w:'guitar',p:'गिटार'},{w:'gun',p:'बंदूक'},{w:'guy',p:'आदमी'},{w:'gym',p:'व्यायामशाला'}],
+        'h': [{w:'habit',p:'आदत'},{w:'hair',p:'बाल'},{w:'half',p:'आधा'},{w:'hall',p:'हॉल'},{w:'hammer',p:'हथौड़ा'},{w:'hand',p:'हाथ'},{w:'handle',p:'संभालना'},{w:'hang',p:'लटकाना'},{w:'happen',p:'होना'},{w:'happy',p:'खुश'},{w:'harbor',p:'बंदरगाह'},{w:'hard',p:'कठिन'},{w:'harm',p:'हानि'},{w:'hat',p:'टोपी'},{w:'hate',p:'नफरत'},{w:'have',p:'पास'},{w:'he',p:'वह'},{w:'head',p:'सिर'},{w:'health',p:'स्वास्थ्य'},{w:'hear',p:'सुनना'},{w:'heart',p:'दिल'},{w:'heat',p:'गर्मी'},{w:'heavy',p:'भारी'},{w:'height',p:'ऊंचाई'},{w:'hello',p:'नमस्ते'},{w:'help',p:'मदद'},{w:'her',p:'उसका'},{w:'here',p:'यहां'},{w:'hero',p:'नायक'},{w:'herself',p:'खुद'},{w:'hesitate',p:'हिचकिचाना'},{w:'hidden',p:'छिपा हुआ'},{w:'hide',p:'छिपाना'},{w:'high',p:'उच्च'},{w:'highlight',p:'मुख्य आकर्षण'},{w:'highway',p:'राजमार्ग'},{w:'hill',p:'पहाड़ी'},{w:'him',p:'उसे'},{w:'himself',p:'स्वयं'},{w:'hint',p:'संकेत'},{w:'hip',p:'कूल्हा'},{w:'hire',p:'किराए पर लेना'},{w:'his',p:'उसका'},{w:'history',p:'इतिहास'},{w:'hit',p:'मारना'},{w:'hobby',p:'शौक'},{w:'hold',p:'पकड़'},{w:'hole',p:'छेद'},{w:'holiday',p:'छुट्टी'},{w:'hollow',p:'खोखला'},{w:'holy',p:'पवित्र'},{w:'home',p:'घर'},{w:'honest',p:'ईमानदार'},{w:'honey',p:'शहद'},{w:'honor',p:'सम्मान'},{w:'hook',p:'अंकुड़ा'},{w:'hope',p:'आशा'},{w:'horizon',p:'क्षितिज'},{w:'horror',p:'डरावनी'},{w:'horse',p:'घोड़ा'},{w:'hospital',p:'अस्पताल'},{w:'host',p:'मेज़बान'},{w:'hot',p:'गरम'},{w:'hotel',p:'होटल'},{w:'hour',p:'घंटा'},{w:'house',p:'मकान'},{w:'how',p:'कैसे'},{w:'however',p:'हालांकि'},{w:'huge',p:'विशाल'},{w:'human',p:'मानव'},{w:'humor',p:'हास्य'},{w:'hundred',p:'सौ'},{w:'hungry',p:'भूखा'},{w:'hunt',p:'शिकार'},{w:'hurry',p:'जल्दी'},{w:'hurt',p:'चोट'},{w:'husband',p:'पति'},{w:'hymn',p:'भजन'}],
+        'i': [{w:'ice',p:'बर्फ'},{w:'idea',p:'विचार'},{w:'ideal',p:'आदर्श'},{w:'identify',p:'पहचानना'},{w:'identity',p:'पहचान'},{w:'if',p:'अगर'},{w:'ignore',p:'अनदेखा'},{w:'ill',p:'बीमार'},{w:'illegal',p:'अवैध'},{w:'illness',p:'बीमारी'},{w:'image',p:'छवि'},{w:'imagine',p:'कल्पना'},{w:'immediate',p:'तत्काल'},{w:'impact',p:'प्रभाव'},{w:'implement',p:'लागू'},{w:'imply',p:'मतलब'},{w:'import',p:'आयात'},{w:'important',p:'महत्वपूर्ण'},{w:'impose',p:'थोपना'},{w:'impossible',p:'असंभव'},{w:'impress',p:'प्रभावित'},{w:'impression',p:'प्रभाव'},{w:'improve',p:'सुधारना'},{w:'in',p:'में'},{w:'incentive',p:'प्रोत्ษहन'},{w:'inch',p:'इंच'},{w:'incident',p:'घटना'},{w:'include',p:'शामिल'},{w:'income',p:'आय'},{w:'incorporate',p:'शामिल'},{w:'increase',p:'बढ़ना'},{w:'indeed',p:'वास्तव में'},{w:'independent',p:'स्वतंत्र'},{w:'index',p:'सूची'},{w:'indicate',p:'संकेत'},{w:'individual',p:'व्यक्ति'},{w:'industry',p:'उद्योग'},{w:'inevitable',p:'अपरिहार्य'},{w:'infant',p:'शिशु'},{w:'infect',p:'संक्रमित'},{w:'inflation',p:'मुद्रास्फीति'},{w:'influence',p:'प्रभाव'},{w:'inform',p:'सूचित'},{w:'information',p:'जानकारी'},{w:'initial',p:'प्रारंभिक'},{w:'initiate',p:'शुरू'},{w:'initiative',p:'पहल'},{w:'injure',p:'घायल'},{w:'injury',p:'चोट'},{w:'inner',p:'आंतरिक'},{w:'innocent',p:'मासूम'},{w:'innovation',p:'नवाचार'},{w:'input',p:'इनपुट'},{w:'inquire',p:'पूछताछ'},{w:'insect',p:'कीट'},{w:'inside',p:'अंदर'},{w:'insight',p:'अंतर्दृष्टि'},{w:'insist',p:'आग्रह'},{w:'inspire',p:'प्रेरित'},{w:'install',p:'स्थापित'},{w:'instance',p:'उदाहरण'},{w:'instant',p:'तुरंत'},{w:'instead',p:'बजाय'},{w:'institute',p:'संस्थान'},{w:'institution',p:'संस्था'},{w:'instruct',p:'निर्देश'},{w:'instruction',p:'अनुदेश'},{w:'instrument',p:'उपकरण'},{w:'insurance',p:'बीमा'},{w:'intellectual',p:'बौद्धिक'},{w:'intelligence',p:'बुद्धि'},{w:'intend',p:'इरादा'},{w:'intense',p:'तीव्र'},{w:'intensity',p:'तीव्रता'},{w:'intention',p:'इरादा'},{w:'interaction',p:'बातचीत'},{w:'interest',p:'ब्याज'},{w:'internal',p:'आंतरिक'},{w:'international',p:'अंतरराष्ट्रीय'},{w:'internet',p:'इंटरनेट'},{w:'interpret',p:'व्याख्या'},{w:'interrupt',p:'बाधा'},{w:'interval',p:'अंतराल'},{w:'intervention',p:'हस्तक्षेप'},{w:'interview',p:'साक्षात्कार'},{w:'into',p:'में'},{w:'introduce',p:'परिचय'},{w:'invade',p:'आक्रमण'},{w:'invent',p:'आविष्कार'},{w:'invest',p:'निवेश'},{w:'investigate',p:'जांच'},{w:'investment',p:'निवेश'},{w:'invite',p:'आमंत्रित'},{w:'involve',p:'शामिल'},{w:'iron',p:'लोहा'},{w:'island',p:'द्वीप'},{w:'isolate',p:'अलग'},{w:'issue',p:'मुद्दा'},{w:'it',p:'यह'},{w:'item',p:'वस्तु'},{w:'its',p:'इसका'},{w:'itself',p:'स्वयं'}],
+        'j': [{w:'jacket',p:'जैकेट'},{w:'jail',p:'जेल'},{w:'jam',p:'जाम'},{w:'jar',p:'जार'},{w:'jaw',p:'जबड़ा'},{w:'jealous',p:'ईर्ष्या'},{w:'jeans',p:'जींस'},{w:'jet',p:'जेट'},{w:'jewel',p:'गहना'},{w:'job',p:'नौकरी'},{w:'join',p:'शामिल होना'},{w:'joint',p:'संयुक्त'},{w:'joke',p:'मजाक'},{w:'journal',p:'पत्रिका'},{w:'journey',p:'यात्रा'},{w:'joy',p:'आनंद'},{w:'judge',p:'न्यायाधीश'},{w:'judgment',p:'निर्णय'},{w:'juice',p:'रस'},{w:'jump',p:'कूदना'},{w:'junior',p:'कनिष्ठ'},{w:'jury',p:'जूरी'},{w:'just',p:'बस'},{w:'justice',p:'न्याय'},{w:'justify',p:'उचित'}],
+        'k': [{w:'keep',p:'रखना'},{w:'key',p:'चाबी'},{w:'kick',p:'लात मारना'},{w:'kid',p:'बच्चा'},{w:'kill',p:'मारना'},{w:'kind',p:'दयालु'},{w:'king',p:'राजा'},{w:'kingdom',p:'राज्य'},{w:'kiss',p:'चुंबन'},{w:'kit',p:'किट'},{w:'kitchen',p:'रसोई'},{w:'kite',p:'पतंग'},{w:'knee',p:'घुटना'},{w:'kneel',p:'घुटने टेकना'},{w:'knife',p:'चाकू'},{w:'knit',p:'बुनना'},{w:'knock',p:'खटखटाना'},{w:'know',p:'जानना'},{w:'knowledge',p:'ज्ञान'}],
+        'l': [{w:'label',p:'लेबल'},{w:'labor',p:'श्रम'},{w:'laboratory',p:'प्रयोगशाला'},{w:'lack',p:'अभाव'},{w:'ladder',p:'सीढ़ी'},{w:'lady',p:'महिला'},{w:'lake',p:'झील'},{w:'lamp',p:'दीपक'},{w:'land',p:'भूमि'},{w:'landscape',p:'परिदृश्य'},{w:'language',p:'भाषा'},{w:'lap',p:'गोद'},{w:'large',p:'बड़ा'},{w:'last',p:'अंतिम'},{w:'late',p:'देर'},{w:'later',p:'बाद में'},{w:'laugh',p:'हंसना'},{w:'launch',p:'प्रक्षेपण'},{w:'laundry',p:'कपड़े धोने'},{w:'law',p:'कानून'},{w:'lawn',p:'लॉन'},{w:'lawyer',p:'वकील'},{w:'lay',p:'रखना'},{w:'layer',p:'परत'},{w:'lazy',p:'आलसी'},{w:'lead',p:'नेतृत्व'},{w:'leader',p:'नेता'},{w:'leaf',p:'पत्ती'},{w:'league',p:'लीग'},{w:'leak',p:'रिसाव'},{w:'lean',p:'झुकना'},{w:'learn',p:'सीखना'},{w:'least',p:'कम से कम'},{w:'leather',p:'चमड़ा'},{w:'leave',p:'छोड़ना'},{w:'lecture',p:'व्याख्यान'},{w:'left',p:'बाएं'},{w:'leg',p:'पैर'},{w:'legacy',p:'विरासत'},{w:'legal',p:'कानूनी'},{w:'legend',p:'किंवदंती'},{w:'leisure',p:'अवकाश'},{w:'lemon',p:'नींबू'},{w:'lend',p:'उधार देना'},{w:'length',p:'लंबाई'},{w:'lens',p:'लेंस'},{w:'less',p:'कम'},{w:'lesson',p:'पाठ'},{w:'let',p:'करने देना'},{w:'letter',p:'पत्र'},{w:'level',p:'स्तर'},{w:'liar',p:'झूठा'},{w:'liberal',p:'उदार'},{w:'library',p:'पुस्तकालय'},{w:'license',p:'लाइसेंस'},{w:'lick',p:'चाटना'},{w:'lie',p:'झूठ'},{w:'life',p:'जीवन'},{w:'lift',p:'उठाना'},{w:'light',p:'रोशनी'},{w:'like',p:'पसंद'},{w:'likely',p:'संभावना'},{w:'limb',p:'अंग'},{w:'limit',p:'सीमा'},{w:'line',p:'रेखा'},{w:'link',p:'लिंक'},{w:'lion',p:'शेर'},{w:'lip',p:'होंठ'},{w:'liquid',p:'तरल'},{w:'list',p:'सूची'},{w:'listen',p:'सुनना'},{w:'literary',p:'साहित्यिक'},{w:'little',p:'छोटा'},{w:'live',p:'रहना'},{w:'load',p:'भार'},{w:'loan',p:'ऋण'},{w:'local',p:'स्थानीय'},{w:'locate',p:'पता लगाना'},{w:'lock',p:'ताला'},{w:'log',p:'लॉग'},{w:'logic',p:'तर्क'},{w:'lonely',p:'अकेला'},{w:'long',p:'लंबा'},{w:'look',p:'देखना'},{w:'loop',p:'लूप'},{w:'loose',p:'ढीला'},{w:'lord',p:'भगवान'},{w:'lose',p:'हारना'},{w:'loss',p:'नुकसान'},{w:'lot',p:'बहुत'},{w:'loud',p:'जोर'},{w:'love',p:'प्यार'},{w:'low',p:'कम'},{w:'loyal',p:'वफादार'},{w:'luck',p:'भाग्य'},{w:'lucky',p:'भाग्यशाली'},{w:'lunch',p:'दोपहर का भोजन'},{w:'lung',p:'फेफड़ा'},{w:'luxury',p:'विलासिता'}],
+        'm': [{w:'machine',p:'मशीन'},{w:'mad',p:'पागल'},{w:'magazine',p:'पत्रिका'},{w:'magic',p:'जादू'},{w:'mail',p:'डाक'},{w:'main',p:'मुख्य'},{w:'maintain',p:'बनाए रखना'},{w:'major',p:'प्रमुख'},{w:'make',p:'बनाना'},{w:'male',p:'पुरुष'},{w:'mall',p:'मॉल'},{w:'man',p:'आदमी'},{w:'manage',p:'प्रबंधन'},{w:'manner',p:'तरीका'},{w:'many',p:'अनेक'},{w:'map',p:'नक्शा'},{w:'march',p:'मार्च'},{w:'mark',p:'निशान'},{w:'market',p:'बाजार'},{w:'marry',p:'शादी'},{w:'mass',p:'द्रव्यमान'},{w:'master',p:'मालिक'},{w:'match',p:'मिलान'},{w:'mate',p:'साथी'},{w:'material',p:'सामग्री'},{w:'math',p:'गणित'},{w:'matter',p:'मामला'},{w:'maximum',p:'अधिकतम'},{w:'may',p:'อาจจะ'},{w:'maybe',p:'शायद'},{w:'mayor',p:'महापौर'},{w:'me',p:'मुझे'},{w:'meal',p:'भोजन'},{w:'mean',p:'मतलब'},{w:'measure',p:'माप'},{w:'meat',p:'मांस'},{w:'mechanic',p:'मैकेनिक'},{w:'medal',p:'पदक'},{w:'media',p:'मीडिया'},{w:'medical',p:'चिकित्सा'},{w:'medicine',p:'दवा'},{w:'medium',p:'मध्यम'},{w:'meet',p:'मिलना'},{w:'melt',p:'पिघलना'},{w:'member',p:'सदस्य'},{w:'memory',p:'स्मृति'},{w:'mental',p:'मानसिक'},{w:'mention',p:'उल्लेख'},{w:'menu',p:'मेन्यू'},{w:'merchant',p:'व्यापारी'},{w:'mere',p:'मात्र'},{w:'merge',p:'विलय'},{w:'merit',p:'योग्यता'},{w:'mess',p:'गंदगी'},{w:'message',p:'संदेश'},{w:'metal',p:'धातु'},{w:'meter',p:'मीटर'},{w:'method',p:'विधि'},{w:'middle',p:'मध्य'},{w:'midnight',p:'आधी रात'},{w:'might',p:'might'},{w:'mild',p:'हल्का'},{w:'military',p:'सेना'},{w:'milk',p:'दूध'},{w:'million',p:'दस लाख'},{w:'mind',p:'मन'},{w:'mine',p:'मेरा'},{w:'minimum',p:'न्यूनतम'},{w:'minister',p:'मंत्री'},{w:'minor',p:'नाबालिग'},{w:'minute',p:'मिनट'},{w:'miracle',p:'चमत्कार'},{w:'mirror',p:'आईना'},{w:'miss',p:'कुमारी'},{w:'missile',p:'मिसाइल'},{w:'mission',p:'मिशन'},{w:'mistake',p:'गलती'},{w:'mix',p:'मिश्रण'},{w:'mixture',p:'मिश्रण'},{w:'mobile',p:'मोबाइल'},{w:'mode',p:'मोड'},{w:'model',p:'आदर्श'},{w:'moderate',p:'उदारवादी'},{w:'modern',p:'आधुनिक'},{w:'modest',p:'विनम्र'},{w:'mom',p:'माँ'},{w:'moment',p:'क्षण'},{w:'money',p:'पैसा'},{w:'monitor',p:'मॉनिटर'},{w:'monkey',p:'बंदर'},{w:'month',p:'महीना'},{w:'mood',p:'मनोदशा'},{w:'moon',p:'चांद'},{w:'moral',p:'नैतिक'},{w:'more',p:'अधिक'},{w:'morning',p:'सुबह'},{w:'mortal',p:'नश्वर'},{w:'most',p:'अधिकांश'},{w:'mother',p:'मां'},{w:'motion',p:'गति'},{w:'motor',p:'मोटर'},{w:'mountain',p:'पहाड़'},{w:'mouse',p:'चूहा'},{w:'mouth',p:'मुंह'},{w:'move',p:'चलना'},{w:'movie',p:'चलचित्र'},{w:'much',p:'बहुत'},{w:'mud',p:'कीचड़'},{w:'multiple',p:'अनेक'},{w:'multiply',p:'गुणा'},{w:'murder',p:'हत्या'},{w:'muscle',p:'मांसपेशी'},{w:'museum',p:'संग्रहालय'},{w:'music',p:'संगीत'},{w:'must',p:'चाहिए'},{w:'mutual',p:'आपसी'},{w:'my',p:'मेरा'},{w:'myself',p:'स्वयं'},{w:'mystery',p:'रहस्य'},{w:'myth',p:'मिथक'}],
+        'n': [{w:'nail',p:'नाखून'},{w:'naive',p:'भोला'},{w:'naked',p:'नग्न'},{w:'name',p:'नाम'},{w:'narrow',p:'संकीर्ण'},{w:'nasty',p:'गंदा'},{w:'nation',p:'राष्ट्र'},{w:'national',p:'राष्ट्रीय'},{w:'native',p:'मूल निवासी'},{w:'natural',p:'प्राकृतिक'},{w:'nature',p:'प्रकृति'},{w:'navy',p:'नौसेना'},{w:'near',p:'निकट'},{w:'neat',p:'साफ'},{w:'necessary',p:'आवश्यक'},{w:'neck',p:'गर्दन'},{w:'need',p:'ज़रूरत'},{w:'needle',p:'सुई'},{w:'negative',p:'नकारात्मक'},{w:'neglect',p:'उपेक्षा'},{w:'negotiate',p:'मोलभाव'},{w:'neighbor',p:'पड़ोसी'},{w:'neither',p:'न तो'},{w:'nephew',p:'भतीजा'},{w:'nerve',p:'तंत्रिका'},{w:'nervous',p:'घबड़ाया हुआ'},{w:'nest',p:'घोंसला'},{w:'net',p:'जाल'},{w:'network',p:'नेटवर्क'},{w:'neutral',p:'तटस्थ'},{w:'never',p:'कभी नहीं'},{w:'new',p:'नया'},{w:'news',p:'समाचार'},{w:'next',p:'अगला'},{w:'nice',p:'अच्छा'},{w:'niece',p:'भतीजी'},{w:'night',p:'रात'},{w:'nine',p:'नौ'},{w:'no',p:'नहीं'},{w:'noble',p:'महान'},{w:'nobody',p:'कोई नहीं'},{w:'noise',p:'शोर'},{w:'nominate',p:'मनोनीत'},{w:'none',p:'कोई नहीं'},{w:'nonsense',p:'बकवास'},{w:'noon',p:'दोपहर'},{w:'nor',p:'न'},{w:'normal',p:'सामान्य'},{w:'north',p:'उत्तर'},{w:'nose',p:'नाक'},{w:'not',p:'नहीं'},{w:'note',p:'ध्यान दें'},{w:'nothing',p:'कुछ नहीं'},{w:'notice',p:'सूचना'},{w:'notion',p:'धारणा'},{w:'novel',p:'उपन्यास'},{w:'now',p:'अब'},{w:'nowhere',p:'कहीं नहीं'},{w:'nuclear',p:'परमाणु'},{w:'nude',p:'नग्न'},{w:'number',p:'संख्या'},{w:'numerous',p:'अनेक'},{w:'nurse',p:'नर्स'},{w:'nut',p:'अखरोट'},{w:'nylon',p:'नायलॉन'}],
+        'o': [{w:'obey',p:'मानना'},{w:'object',p:'वस्तु'},{w:'objective',p:'उद्देश्य'},{w:'obligation',p:'दायित्व'},{w:'observe',p:'निरीक्षण'},{w:'observer',p:'पर्यवेक्षक'},{w:'obtain',p:'प्राप्त'},{w:'obvious',p:'ज़ाहिर'},{w:'occasion',p:'अवसर'},{w:'occupy',p:'कब्जा'},{w:'occur',p:'होना'},{w:'ocean',p:'सागर'},{w:'odd',p:'अजीब'},{w:'of',p:'का'},{w:'off',p:'बंद'},{w:'offend',p:'अपमान'},{w:'offer',p:'प्रस्ताव'},{w:'office',p:'कार्यालय'},{w:'officer',p:'अधिकारी'},{w:'official',p:'आधिकारिक'},{w:'often',p:'अक्सर'},{w:'oil',p:'तेल'},{w:'ok',p:'ठीक है'},{w:'old',p:'पुराना'},{w:'on',p:'पर'},{w:'once',p:'एक बार'},{w:'one',p:'एक'},{w:'ongoing',p:'चल रही'},{w:'onion',p:'प्याज'},{w:'online',p:'ऑनलाइन'},{w:'only',p:'केवल'},{w:'onto',p:'पर'},{w:'open',p:'खुला'},{w:'operate',p:'संचालित'},{w:'operation',p:'आपरेशन'},{w:'opinion',p:'राय'},{w:'opponent',p:'प्रतिद्वंद्वी'},{w:'opportunity',p:'अवसर'},{w:'oppose',p:'विरोध'},{w:'opposite',p:'विपरीत'},{w:'optimistic',p:'आशावादी'},{w:'option',p:'विकल्प'},{w:'or',p:'या'},{w:'orange',p:'नारंगी'},{w:'orbit',p:'कक्षा'},{w:'order',p:'आदेश'},{w:'ordinary',p:'साधारण'},{w:'organ',p:'अंग'},{w:'organic',p:'कार्बनिक'},{w:'organize',p:'संगठित'},{w:'origin',p:'मूल'},{w:'original',p:'मूल'},{w:'other',p:'अन्य'},{w:'otherwise',p:'अन्यथा'},{w:'ought',p:'चाहिए'},{w:'our',p:'हमारा'},{w:'ourselves',p:'स्वयं'},{w:'out',p:'बाहर'},{w:'outcome',p:'परिणाम'},{w:'outdoor',p:'आउटडोर'},{w:'outer',p:'बाहरी'},{w:'outfit',p:'पोशाक'},{w:'outlet',p:'आउटलेट'},{w:'outline',p:'रूपरेखा'},{w:'output',p:'आउटपुट'},{w:'outside',p:'बाहर'},{w:'outstanding',p:'उत्कृष्ट'},{w:'oven',p:'ओवन'},{w:'over',p:'ऊपर'},{w:'overall',p:'कुल मिलाकर'},{w:'overcome',p:'दूर'},{w:'owe',p:'ऋणी'},{w:'owl',p:'उल्लू'},{w:'own',p:'अपना'},{w:'owner',p:'मालिक'},{w:'oxygen',p:'ऑक्सीजन'}],
+        'p': [{w:'pace',p:'गति'},{w:'pack',p:'पैक'},{w:'package',p:'पैकेज'},{w:'page',p:'पृष्ठ'},{w:'pain',p:'दर्द'},{w:'paint',p:'रंग'},{w:'pair',p:'जोड़ा'},{w:'palace',p:'महल'},{w:'pale',p:'पीला'},{w:'palm',p:'हथेली'},{w:'pan',p:'कड़ाही'},{w:'panel',p:'पैनल'},{w:'panic',p:'घबड़ाहट'},{w:'pants',p:'पैंट'},{w:'paper',p:'कागज'},{w:'parade',p:'परेड'},{w:'parent',p:'अभिभावक'},{w:'park',p:'पार्क'},{w:'parliament',p:'संसद'},{w:'part',p:'भाग'},{w:'participate',p:'भाग लेना'},{w:'partner',p:'साथी'},{w:'party',p:'पार्टी'},{w:'pass',p:'गुजरना'},{w:'passage',p:'मार्ग'},{w:'passenger',p:'यात्री'},{w:'passion',p:'जुनून'},{w:'passport',p:'पासपोर्ट'},{w:'past',p:'अतीत'},{w:'pat',p:'थपथपाना'},{w:'patch',p:'पैच'},{w:'path',p:'पथ'},{w:'patience',p:'धैर्य'},{w:'patient',p:'रोगी'},{w:'pattern',p:'पैटर्न'},{w:'pause',p:'रोकें'},{w:'pay',p:'वेतन'},{w:'payment',p:'भुगतान'},{w:'peace',p:'शांति'},{w:'peak',p:'शिखर'},{w:'peanut',p:'मूंगफली'},{w:'pen',p:'कलम'},{w:'penalty',p:'दंड'},{w:'pencil',p:'पेंसिल'},{w:'penny',p:'पैसा'},{w:'people',p:'लोग'},{w:'pepper',p:'मिर्च'},{w:'per',p:'प्रति'},{w:'perceive',p:'समझना'},{w:'percent',p:'प्रतिशत'},{w:'perfect',p:'उत्तम'},{w:'perform',p:'प्रदर्शन'},{w:'perhaps',p:'शायद'},{w:'period',p:'अवधि'},{w:'permanent',p:'स्थायी'},{w:'permit',p:'अनुमति'},{w:'person',p:'व्यक्ति'},{w:'personal',p:'व्यक्तिगत'},{w:'persuade',p:'मनाना'},{w:'pet',p:'पालतू'},{w:'phase',p:'चरण'},{w:'philosophy',p:'दर्शन'},{w:'phone',p:'फोन'},{w:'photo',p:'तस्वीर'},{w:'phrase',p:'वाक्यांश'},{w:'physical',p:' शारीरिक'},{w:'piano',p:'पियानो'},{w:'pick',p:'चुनना'},{w:'picture',p:'चित्र'},{w:'pie',p:'पाई'},{w:'piece',p:'टुकड़ा'},{w:'pig',p:'सुअर'},{w:'pile',p:'ढेर'},{w:'pill',p:'गोली'},{w:'pillow',p:'तकिया'},{w:'pilot',p:'पायलट'},{w:'pin',p:'पिन'},{w:'pink',p:'गुलाबी'},{w:'pipe',p:'पाइप'},{w:'pitch',p:'पिच'},{w:'pizza',p:'पिज़्ज़ा'},{w:'place',p:'जगह'},{w:'plan',p:'योजना'},{w:'plane',p:'विमान'},{w:'planet',p:'ग्रह'},{w:'plant',p:'पौधा'},{w:'plastic',p:'प्लास्टिक'},{w:'plate',p:'थाली'},{w:'platform',p:'मंच'},{w:'play',p:'खेलना'},{w:'player',p:'खिलाड़ी'},{w:'pleasant',p:'सुखद'},{w:'please',p:'कृपया'},{w:'pleasure',p:'प्रसन्नता'},{w:'plenty',p:'बहुत'},{w:'plot',p:'भूखंड'},{w:'plus',p:'प्लस'},{w:'pocket',p:'जेब'},{w:'poem',p:'कविता'},{w:'poet',p:'कवि'},{w:'poetry',p:'कविता'},{w:'point',p:'बिंदु'},{w:'poison',p:'जहर'},{w:'pole',p:'ध्रुव'},{w:'police',p:'पुलिस'},{w:'policy',p:'नीति'},{w:'political',p:'राजनीतिक'},{w:'poll',p:'चुनाव'},{w:'pond',p:'तालाब'},{w:'pool',p:'पूल'},{w:'poor',p:'गरीब'},{w:'pop',p:'पॉप'},{w:'popular',p:'लोकप्रिय'},{w:'port',p:'बंदरगाह'},{w:'portion',p:'भाग'},{w:'pose',p:'पोज'},{w:'position',p:'पद'},{w:'positive',p:'सकारात्मक'},{w:'possess',p:'अधिकार'},{w:'possible',p:'संभव'},{w:'post',p:'डाक'},{w:'pot',p:'बर्तन'},{w:'potato',p:'आलू'},{w:'potential',p:'संभावना'},{w:'pound',p:'पाउंड'},{w:'pour',p:'डालना'},{w:'poverty',p:'गरीबी'},{w:'powder',p:'पाउडर'},{w:'power',p:'शक्ति'},{w:'practice',p:'अभ्यास'},{w:'praise',p:'प्रशंसा'},{w:'pray',p:'प्रार्थना'},{w:'predict',p:'भविष्यवाणी'},{w:'prefer',p:'पसंद'},{w:'pregnant',p:'गर्भवती'},{w:'prepare',p:'तैयार'},{w:'presence',p:'उपस्थिति'},{w:'present',p:'उपहार'},{w:'preserve',p:'संरक्षित'},{w:'president',p:'अध्यक्ष'},{w:'press',p:'दबाएँ'},{w:'pressure',p:'दबाव'},{w:'pretend',p:'ढोंग'},{w:'pretty',p:'सुंदर'},{w:'prevent',p:'रोकना'},{w:'previous',p:'पिछला'},{w:'price',p:'कीमत'},{w:'pride',p:'गौरव'},{w:'priest',p:'पुजारी'},{w:'primary',p:'प्राथमिक'},{w:'prince',p:'राजकुमार'},{w:'principal',p:'प्रमुख'},{w:'principle',p:'सिद्धांत'},{w:'print',p:'छापना'},{w:'prior',p:'पूर्व'},{w:'priority',p:'प्राथमिकता'},{w:'prison',p:'जेल'},{w:'private',p:'निजी'},{w:'prize',p:'पुरस्कार'},{w:'probably',p:'शायद'},{w:'problem',p:'समस्या'},{w:'procedure',p:'प्रक्रिया'},{w:'proceed',p:'आगे बढ़ना'},{w:'process',p:'प्रक्रिया'},{w:'produce',p:'उत्पादन'},{w:'product',p:'उत्पाद'},{w:'profession',p:'पेशा'},{w:'professor',p:'प्रोफेसर'},{w:'profile',p:'प्रोफ़ाइल'},{w:'profit',p:'लाभ'},{w:'program',p:'कार्यक्रम'},{w:'progress',p:'प्रगति'},{w:'project',p:'परियोजना'},{w:'promise',p:'वादा'},{w:'promote',p:'बढ़ावा देना'},{w:'prompt',p:'शीघ्र'},{w:'proof',p:'सबूत'},{w:'proper',p:'उचित'},{w:'property',p:'संपत्ति'},{w:'proposal',p:'प्रस्ताव'},{w:'propose',p:'प्रस्ताव'},{w:'protect',p:'रक्षा'},{w:'protein',p:'प्रोटीन'},{w:'protest',p:'विरोध'},{w:'proud',p:'गौरव'},{w:'prove',p:'साबित'},{w:'provide',p:'प्रदान'},{w:'public',p:'सार्वजनिक'},{w:'pull',p:'खींचना'},{w:'pump',p:'पंप'},{w:'punch',p:'पंच'},{w:'punish',p:'सजा'},{w:'purchase',p:'खरीद'},{w:'pure',p:'शुद्ध'},{w:'purple',p:'बैंगनी'},{w:'purpose',p:'उद्देश्य'},{w:'push',p:'धक्का'},{w:'put',p:'रखना'},{w:'puzzle',p:'पहेली'}],
+        'q': [{w:'qualify',p:'योग्य'},{w:'quality',p:'गुणवत्ता'},{w:'quantity',p:'मात्रा'},{w:'quarrel',p:'झगड़ा'},{w:'quarter',p:'चौथाई'},{w:'queen',p:'रानी'},{w:'quest',p:'खोज'},{w:'question',p:'प्रश्न'},{w:'quick',p:'जल्दी'},{w:'quiet',p:'शांत'},{w:'quit',p:'छोड़ना'},{w:'quite',p:'काफी'},{w:'quiz',p:'प्रश्नोत्तरी'},{w:'quote',p:'उद्धरण'}],
+        'r': [{w:'race',p:'दौड़'},{w:'radar',p:'रडार'},{w:'radio',p:'रेडियो'},{w:'rage',p:'रोष'},{w:'rail',p:'रेल'},{w:'rain',p:'बारिश'},{w:'raise',p:'उठाना'},{w:'rally',p:'रैली'},{w:'ranch',p:'खेत'},{w:'random',p:'यादृच्छिक'},{w:'range',p:'रेंज'},{w:'rank',p:'पद'},{w:'rapid',p:'तेज'},{w:'rare',p:'दुर्लभ'},{w:'rat',p:'चूहा'},{w:'rate',p:'दर'},{w:'rather',p:'बल्कि'},{w:'ratio',p:'अनुपात'},{w:'raw',p:'कच्चा'},{w:'ray',p:'किरण'},{w:'reach',p:'पहुंचना'},{w:'react',p:'प्रतिक्रिया'},{w:'read',p:'पढ़ना'},{w:'ready',p:'तैयार'},{w:'real',p:'वास्तविक'},{w:'reality',p:'वास्तविकता'},{w:'realize',p:'एहसास'},{w:'really',p:'वास्तव में'},{w:'reason',p:'कारण'},{w:'rebel',p:'विद्रोही'},{w:'recall',p:'याद'},{w:'receive',p:'प्राप्त'},{w:'recent',p:'हाल का'},{w:'recipe',p:'नुस्खा'},{w:'recognize',p:'पहचानना'},{w:'recommend',p:'सिफारिश'},{w:'record',p:'अभिलेख'},{w:'recover',p:'ठीक'},{w:'recruit',p:'भर्ती'},{w:'red',p:'लाल'},{w:'reduce',p:'कम'},{w:'refer',p:'संदर्भ'},{w:'reflect',p:'प्रतिबिंब'},{w:'reform',p:'सुधार'},{w:'refuse',p:'इनकार'},{w:'regard',p:'संबंध'},{w:'regime',p:'शासन'},{w:'region',p:'क्षेत्र'},{w:'register',p:'पंजीकरण'},{w:'regret',p:'खेद'},{w:'regular',p:'नियमित'},{w:'regulate',p:'विनियमित'},{w:'reinforce',p:'मजबूत'},{w:'reject',p:'अस्वीकार'},{w:'relate',p:'संबंधित'},{w:'relation',p:'संबंध'},{w:'relative',p:'रिश्तेदार'},{w:'relax',p:'आराम'},{w:'release',p:'रिहाई'},{w:'relevant',p:'प्रासंगिक'},{w:'reliable',p:'विश्वसनीय'},{w:'relief',p:'राहत'},{w:'religion',p:'धर्म'},{w:'rely',p:'भरोसा'},{w:'remain',p:'रहना'},{w:'remember',p:'याद'},{w:'remind',p:'याद दिलाना'},{w:'remote',p:'दूरस्थ'},{w:'remove',p:'हटाना'},{w:'rent',p:'किराया'},{w:'repair',p:'मरम्मत'},{w:'repeat',p:'दोहराना'},{w:'replace',p:'बदलना'},{w:'reply',p:'जवाब'},{w:'report',p:'रिपोर्ट'},{w:'represent',p:'प्रतिनिधि'},{w:'republic',p:'गणतंत्र'},{w:'request',p:'अनुरोध'},{w:'require',p:'आवश्यकता'},{w:'rescue',p:'बचाव'},{w:'research',p:'अनुसंधान'},{w:'resemble',p:'समान'},{w:'reserve',p:'आरक्षित'},{w:'resident',p:'निवासी'},{w:'resign',p:'इस्तीफा'},{w:'resist',p:'विरोध'},{w:'resolve',p:'संकल्प'},{w:'resort',p:'सहारा'},{w:'resource',p:'संसाधन'},{w:'respect',p:'सम्मान'},{w:'respond',p:'जवाब'},{w:'response',p:'प्रतिक्रिया'},{w:'rest',p:'आराम'},{w:'restore',p:'पुनर्स्थापित'},{w:'restrict',p:'प्रतिबंधित'},{w:'result',p:'परिणाम'},{w:'retain',p:'बनाए रखना'},{w:'retire',p:'निवृत्त'},{w:'retreat',p:'पीछे हटना'},{w:'return',p:'वापसी'},{w:'reveal',p:'प्रकट'},{w:'revenge',p:'बदला'},{w:'revenue',p:'राजस्व'},{w:'reverse',p:'उलटना'},{w:'review',p:'समीक्षा'},{w:'revise',p:'संशोधन'},{w:'revolution',p:'क्रांति'},{w:'reward',p:'इनाम'},{w:'rhythm',p:'ताल'},{w:'ribbon',p:'फीता'},{w:'rice',p:'चावल'},{w:'rich',p:'अमीर'},{w:'rid',p:'छुटकारा'},{w:'ride',p:'सवारी'},{w:'right',p:'सही'},{w:'ring',p:'अंगूठी'},{w:'riot',p:'दंगा'},{w:'rip',p:'चीर'},{w:'rise',p:'उदय'},{w:'risk',p:'जोखिम'},{w:'rival',p:'प्रतिद्वंद्वी'},{w:'river',p:'नदी'},{w:'road',p:'सड़क'},{w:'robot',p:'रोबोट'},{w:'rock',p:'चट्टान'},{w:'role',p:'भूमिका'},{w:'roll',p:'लुढ़कना'},{w:'romance',p:'रोमांस'},{w:'roof',p:'छत'},{w:'room',p:'कमरा'},{w:'root',p:'जड़'},{w:'rope',p:'रस्सी'},{w:'rose',p:'गुलाब'},{w:'rough',p:'खुरदरा'},{w:'round',p:'गोल'},{w:'route',p:'मार्ग'},{w:'routine',p:'नियमित'},{w:'row',p:'पंक्ति'},{w:'royal',p:'शाही'},{w:'rub',p:'रगड़ना'},{w:'rubber',p:'रबर'},{w:'rude',p:'असभ्य'},{w:'ruin',p:'बर्बाद'},{w:'rule',p:'नियम'},{w:'run',p:'दौड़ना'},{w:'rural',p:'ग्रामीण'},{w:'rush',p:'भीड़'}],
+        's': [{w:'sacred',p:'पवित्र'},{w:'sad',p:'उदास'},{w:'safe',p:'सुरक्षित'},{w:'sail',p:'पाल'},{w:'sake',p:'खातिर'},{w:'salad',p:'सलाद'},{w:'salary',p:'वेतन'},{w:'sale',p:'बिक्री'},{w:'salt',p:'नमक'},{w:'same',p:'वही'},{w:'sample',p:'नमूना'},{w:'sand',p:'रेत'},{w:'satisfy',p:'संतुष्ट'},{w:'sauce',p:'चटनी'},{w:'save',p:'बचाना'},{w:'say',p:'कहना'},{w:'scale',p:'पैमाना'},{w:'scan',p:'स्कैन'},{w:'scandal',p:'कांड'},{w:'scare',p:'डराना'},{w:'scared',p:'डरा हुआ'},{w:'scatter',p:'बिखेरना'},{w:'scene',p:'दृश्य'},{w:'schedule',p:'अनुसूची'},{w:'scheme',p:'योजना'},{w:'scholar',p:'विद्वान'},{w:'school',p:'स्कूल'},{w:'science',p:'विज्ञान'},{w:'scissors',p:'कैंची'},{w:'scold',p:'डांटना'},{w:'scope',p:'दायरा'},{w:'score',p:'स्कोर'},{w:'scout',p:'स्काउट'},{w:'scream',p:'चीख'},{w:'screen',p:'स्क्रीन'},{w:'screw',p:'पेंच'},{w:'script',p:'लिपि'},{w:'sea',p:'समुद्र'},{w:'seal',p:'सील'},{w:'search',p:'खोज'},{w:'season',p:'मौसम'},{w:'seat',p:'सीट'},{w:'second',p:'दूसरा'},{w:'secret',p:'गुप्त'},{w:'section',p:'अनुभाग'},{w:'sector',p:'क्षेत्र'},{w:'secure',p:'सुरक्षित'},{w:'see',p:'देखना'},{w:'seed',p:'बीज'},{w:'seek',p:'खोजना'},{w:'seem',p:'लगता है'},{w:'segment',p:'खंड'},{w:'seize',p:'जब्त'},{w:'seldom',p:'कभी-कभी'},{w:'select',p:'चुनना'},{w:'self',p:'स्व'},{w:'sell',p:'बेचना'},{w:'senate',p:'सीनेट'},{w:'send',p:'भेजना'},{w:'senior',p:'वरिष्ठ'},{w:'sense',p:'समझ'},{w:'sensitive',p:'संवेदनशील'},{w:'sentence',p:'वाक्य'},{w:'separate',p:'अलग'},{w:'sequence',p:'अनुक्रम'},{w:'series',p:'श्रृंखला'},{w:'serious',p:'गंभीर'},{w:'serve',p:'सेवा'},{w:'service',p:'सेवा'},{w:'session',p:'सत्र'},{w:'set',p:'सेट'},{w:'settle',p:'बसना'},{w:'seven',p:'सात'},{w:'several',p:'अनेक'},{w:'severe',p:'ंभीर'},{w:'sew',p:'सीना'},{w:'sex',p:'लिंग'},{w:'shade',p:'छाया'},{w:'shadow',p:'परछाई'},{w:'shake',p:'हिलाना'},{w:'shall',p:'करेगा'},{w:'shallow',p:'उथला'},{w:'shame',p:'शर्म'},{w:'shape',p:'आकार'},{w:'share',p:'शेयर'},{w:'sharp',p:'तेज'},{w:'she',p:'वह'},{w:'shed',p:'शेड'},{w:'sheep',p:'भेड़'},{w:'sheet',p:'चादर'},{w:'shelf',p:'शेल्फ'},{w:'shell',p:'खोल'},{w:'shelter',p:'आश्रय'},{w:'shield',p:'ढाल'},{w:'shift',p:'शिफ्ट'},{w:'shine',p:'चमक'},{w:'ship',p:'जहाज'},{w:'shirt',p:'कमीज'},{w:'shock',p:'झटका'},{w:'shoe',p:'जूता'},{w:'shoot',p:'गोली मारना'},{w:'shop',p:'दुकान'},{w:'shore',p:'किनारा'},{w:'short',p:'छोटा'},{w:'shot',p:'शॉट'},{w:'should',p:'चाहिए'},{w:'shoulder',p:'कंधा'},{w:'shout',p:'चिल्लाना'},{w:'show',p:'दिखाना'},{w:'shower',p:'फुहार'},{w:'shrink',p:'सिकुड़ना'},{w:'shut',p:'बंद'},{w:'shy',p:'शर्मीला'},{w:'sick',p:'बीमार'},{w:'side',p:'पक्ष'},{w:'sigh',p:'आह'},{w:'sight',p:'दृष्टि'},{w:'sign',p:'संकेत'},{w:'signal',p:'संकेत'},{w:'silence',p:'शांति'},{w:'silent',p:'चुप'},{w:'silk',p:'रेशम'},{w:'silly',p:'नासमझ'},{w:'silver',p:'चांदी'},{w:'similar',p:'समान'},{w:'simple',p:'सरल'},{w:'since',p:'चूंकि'},{w:'sing',p:'गाना'},{w:'single',p:'एक'},{w:'sink',p:'डूबना'},{w:'sir',p:'महोदय'},{w:'sister',p:'बहन'},{w:'sit',p:'बैठना'},{w:'site',p:'साइट'},{w:'situation',p:'स्थिति'},{w:'six',p:'छह'},{w:'size',p:'आकार'},{w:'ski',p:'स्की'},{w:'skill',p:'कौशल'},{w:'skin',p:'त्वचा'},{w:'skirt',p:'स्कर्ट'},{w:'sky',p:'आकाश'},{w:'slap',p:'थप्पड़'},{w:'slave',p:'गुलाम'},{w:'sleep',p:'सोना'},{w:'sleeve',p:'आस्तीन'},{w:'slice',p:'टुकड़ा'},{w:'slide',p:'फिसलना'},{w:'slight',p:'थोड़ा'},{w:'slip',p:'फिसलना'},{w:'slope',p:'ढलान'},{w:'slow',p:'धीमा'},{w:'small',p:'छोटा'},{w:'smart',p:'होशियार'},{w:'smash',p:'तोड़ना'},{w:'smell',p:'गंध'},{w:'smile',p:'मुस्कान'},{w:'smoke',p:'धुआं'},{w:'smooth',p:'चिकना'},{w:'snack',p:'नाश्ता'},{w:'snake',p:'सांप'},{w:'sneeze',p:'छींक'},{w:'snow',p:'बर्फ'},{w:'so',p:'इसलिए'},{w:'soap',p:'साबुन'},{w:'soccer',p:'फुटबॉल'},{w:'social',p:'सामाजिक'},{w:'society',p:'समाज'},{w:'sock',p:'जुराब'},{w:'soft',p:'मुलायम'},{w:'software',p:'सॉफ्टवेयर'},{w:'soil',p:'मिट्टी'},{w:'solar',p:'सौर'},{w:'soldier',p:'सैनिक'},{w:'solid',p:'ठोस'},{w:'solution',p:'समाधान'},{w:'solve',p:'हल'},{w:'some',p:'कुछ'},{w:'somehow',p:'किसी तरह'},{w:'someone',p:'कोई'},{w:'something',p:'कुछ'},{w:'sometimes',p:'कभी-कभी'},{w:'son',p:'बेटा'},{w:'song',p:'गीत'},{w:'soon',p:'जल्द ही'},{w:'sorry',p:'माफ़ करना'},{w:'sort',p:'प्रकार'},{w:'soul',p:'आत्मा'},{w:'sound',p:'ध्वनि'},{w:'soup',p:'सूप'},{w:'source',p:'स्रोत'},{w:'south',p:'दक्षिण'},{w:'space',p:'अंतरिक्ष'},{w:'speak',p:'बोलना'},{w:'special',p:'विशेष'},{w:'species',p:'प्रजाति'},{w:'specific',p:'विशिष्ट'},{w:'speech',p:'भाषण'},{w:'speed',p:'गति'},{w:'spell',p:'मंत्र'},{w:'spend',p:'खर्च'},{w:'sphere',p:'गोला'},{w:'spice',p:'मसाला'},{w:'spider',p:'मकड़ी'},{w:'spill',p:'फैलना'},{w:'spin',p:'घूमना'},{w:'spirit',p:'आत्मा'},{w:'spit',p:'थूकना'},{w:'spite',p:'द्वेष'},{w:'split',p:'विभाजित'},{w:'spoil',p:'खराब'},{w:'sponsor',p:'प्रायोजक'},{w:'spoon',p:'चम्मच'},{w:'sport',p:'खेल'},{w:'spot',p:'स्थान'},{w:'spread',p:'फैलना'},{w:'spring',p:'वसंत'},{w:'spy',p:'जासूस'},{w:'squad',p:'दस्ता'},{w:'square',p:'वर्ग'},{w:'squeeze',p:'निचोड़ना'},{w:'stable',p:'स्थिर'},{w:'stadium',p:'स्टेडियम'},{w:'staff',p:'कर्मचारी'},{w:'stage',p:'मंच'},{w:'stair',p:'सीढ़ी'},{w:'stake',p:'दांव'},{w:'stamp',p:'टिकट'},{w:'stand',p:'खड़ा होना'},{w:'standard',p:'मानक'},{w:'star',p:'तारा'},{w:'stare',p:'घूरना'},{w:'start',p:'शुरू'},{w:'state',p:'राज्य'},{w:'station',p:'स्टेशन'},{w:'statistic',p:'सांख्यिकी'},{w:'statue',p:'मूर्ति'},{w:'status',p:'स्थिति'},{w:'stay',p:'रहना'},{w:'steady',p:'स्थिर'},{w:'steal',p:'चुराना'},{w:'steam',p:'भाप'},{w:'steel',p:'स्टील'},{w:'steep',p:'खड़ा'},{w:'steer',p:'स्टीयर'},{w:'stem',p:'तना'},{w:'step',p:'कदम'},{w:'stick',p:'छड़ी'},{w:'stiff',p:'कड़ा'},{w:'still',p:'अभी भी'},{w:'sting',p:'डंक'},{w:'stir',p:'हलचल'},{w:'stock',p:'भंडार'},{w:'stomach',p:'पेट'},{w:'stone',p:'पत्थर'},{w:'stop',p:'रुकना'},{w:'storage',p:'भंडारण'},{w:'store',p:'दुकान'},{w:'storm',p:'तूफान'},{w:'story',p:'कहानी'},{w:'stove',p:'चूल्हा'},{w:'straight',p:'सीधा'},{w:'strain',p:'तनाव'},{w:'strange',p:'अजीब'},{w:'strategy',p:'रणनीति'},{w:'stream',p:'धारा'},{w:'street',p:'गली'},{w:'strength',p:'ताकत'},{w:'stress',p:'तनाव'},{w:'stretch',p:'खिंचाव'},{w:'strict',p:'सख्त'},{w:'strike',p:'हड़ताल'},{w:'string',p:'डोरी'},{w:'strip',p:'पट्टी'},{w:'stroke',p:'झटका'},{w:'strong',p:'मजबूत'},{w:'structure',p:'संरचना'},{w:'struggle',p:'संघर्ष'},{w:'student',p:'छात्र'},{w:'studio',p:'स्टूडियो'},{w:'study',p:'अध्ययन'},{w:'stuff',p:'सामान'},{w:'stupid',p:'मूर्ख'},{w:'style',p:'शैली'},{w:'subject',p:'विषय'},{w:'submit',p:'प्रस्तुत'},{w:'subtle',p:'सूक्ष्म'},{w:'suburb',p:'उपनगर'},{w:'succeed',p:'सफल'},{w:'success',p:'सफलता'},{w:'such',p:'ऐसा'},{w:'suck',p:'चूसना'},{w:'sudden',p:'अचानक'},{w:'sue',p:'मुकदमा'},{w:'suffer',p:'पीड़ित'},{w:'sugar',p:'चीनी'},{w:'suggest',p:'सुझाव'},{w:'suicide',p:'आत्महत्या'},{w:'suit',p:'सूट'},{w:'summer',p:'गर्मी'},{w:'summit',p:'शिखर'},{w:'sun',p:'सूरज'},{w:'super',p:'सुपर'},{w:'supply',p:'आपूर्ति'},{w:'support',p:'समर्थन'},{w:'suppose',p:'मान लीजिए'},{w:'sure',p:'ज़रूर'},{w:'surface',p:'सतह'},{w:'surgery',p:'शल्य चिकित्सा'},{w:'surprise',p:'आश्चर्य'},{w:'surround',p:'घेरना'},{w:'survey',p:'सर्वेक्षण'},{w:'survive',p:'जीवित'},{w:'suspect',p:'संदिग्ध'},{w:'sustain',p:'बनाए रखना'},{w:'swallow',p:'निगलना'},{w:'swear',p:'कसम'},{w:'sweat',p:'पसीना'},{w:'sweep',p:'झाड़ू'},{w:'sweet',p:'मीठा'},{w:'swim',p:'तैरना'},{w:'swing',p:'झूला'},{w:'switch',p:'स्विच'},{w:'sword',p:'तलवार'},{w:'symbol',p:'प्रतीक'},{w:'sympathy',p:'सहानुभूति'},{w:'symptom',p:'लक्षण'},{w:'syrup',p:'सिरप'},{w:'system',p:'प्रणाली'}],
+        't': [{w:'table',p:'तालिका'},{w:'tackle',p:'निपटना'},{w:'tactic',p:'युक्ति'},{w:'tag',p:'टैग'},{w:'tail',p:'पूंछ'},{w:'take',p:'लेना'},{w:'tale',p:'कहानी'},{w:'talent',p:'प्रतिभा'},{w:'talk',p:'बातचीत'},{w:'tall',p:'लंबा'},{w:'tank',p:'टैंक'},{w:'tap',p:'नल'},{w:'tape',p:'टेप'},{w:'target',p:'लक्ष्य'},{w:'task',p:'कार्य'},{w:'taste',p:'स्वाद'},{w:'tax',p:'कर'},{w:'taxi',p:'टैक्सी'},{w:'tea',p:'चाय'},{w:'teach',p:'सिखाना'},{w:'teacher',p:'शिक्षक'},{w:'team',p:'टीम'},{w:'tear',p:'आंसू'},{w:'technical',p:'तकनीकी'},{w:'technique',p:'तकनीक'},{w:'technology',p:'प्रौद्योगिकी'},{w:'teenager',p:'किशोर'},{w:'telephone',p:'टेलीफोन'},{w:'television',p:'टेलीविजन'},{w:'tell',p:'बताना'},{w:'temperature',p:'तापमान'},{w:'temple',p:'मंदिर'},{w:'temporary',p:'अस्थायी'},{w:'tempt',p:'लुभाना'},{w:'ten',p:'दस'},{w:'tenant',p:'किरायेदार'},{w:'tend',p:'प्रवृत्त'},{w:'tender',p:'निविदा'},{w:'tennis',p:'टेनिस'},{w:'tense',p:'तनावग्रस्त'},{w:'tension',p:'तनाव'},{w:'tent',p:'तम्बू'},{w:'term',p:'अवधि'},{w:'terminal',p:'टर्मिनल'},{w:'terrible',p:'भयानक'},{w:'territory',p:'क्षेत्र'},{w:'terror',p:'आतंक'},{w:'test',p:'परीक्षा'},{w:'testify',p:'गवाही'},{w:'text',p:'पाठ'},{w:'than',p:'से'},{w:'thank',p:'धन्यवाद'},{w:'that',p:'कि'},{w:'the',p:'the'},{w:'theater',p:'थिएटर'},{w:'their',p:'उनका'},{w:'them',p:'उन्हें'},{w:'theme',p:'थीम'},{w:'themselves',p:'स्वयं'},{w:'then',p:'तब'},{w:'theory',p:'सिद्धांत'},{w:'therapy',p:'थेरेपी'},{w:'there',p:'वहाँ'},{w:'therefore',p:'इसलिए'},{w:'these',p:'ये'},{w:'they',p:'वे'},{w:'thick',p:'मोटा'},{w:'thief',p:'चोर'},{w:'thigh',p:'जांघ'},{w:'thin',p:'पतला'},{w:'thing',p:'चीज'},{w:'think',p:'सोचना'},{w:'third',p:'तीसरा'},{w:'thirsty',p:'प्यासा'},{w:'thirteen',p:'तेरह'},{w:'thirty',p:'तीस'},{w:'this',p:'यह'},{w:'those',p:'वे'},{w:'though',p:'हालांकि'},{w:'thought',p:'विचार'},{w:'thousand',p:'हजार'},{w:'thread',p:'धागा'},{w:'threat',p:'खतरा'},{w:'threaten',p:'धमकी'},{w:'three',p:'तीन'},{w:'thrill',p:'रोमांच'},{w:'throat',p:'गला'},{w:'throne',p:'सिंहासन'},{w:'through',p:'के माध्यम से'},{w:'throw',p:'फेंकना'},{w:'thumb',p:'अंगूठा'},{w:'thunder',p:'गरज'},{w:'thus',p:'इस प्रकार'},{w:'ticket',p:'टिकट'},{w:'tide',p:'ज्वार'},{w:'tidy',p:'साफ'},{w:'tie',p:'टाई'},{w:'tiger',p:'बाघ'},{w:'tight',p:'तंग'},{w:'tile',p:'टाइल'},{w:'till',p:'तक'},{w:'time',p:'समय'},{w:'tiny',p:'छोटा'},{w:'tip',p:'नोक'},{w:'tire',p:'थकाना'},{w:'tired',p:'थका हुआ'},{w:'tissue',p:'ऊतक'},{w:'title',p:'शीर्षक'},{w:'to',p:'को'},{w:'toast',p:'टोस्ट'},{w:'tobacco',p:'तंबाकू'},{w:'today',p:'आज'},{w:'toe',p:'पैर की अंगुली'},{w:'together',p:'साथ में'},{w:'toilet',p:'शौचालय'},{w:'token',p:'टोकन'},{w:'tolerate',p:'सहन'},{w:'toll',p:'टोल'},{w:'tomato',p:'टमाटर'},{w:'tomorrow',p:'कल'},{w:'tone',p:'स्वर'},{w:'tongue',p:'जीभ'},{w:'tonight',p:'आज रात'},{w:'too',p:'भी'},{w:'tool',p:'उपकरण'},{w:'tooth',p:'दांत'},{w:'top',p:'शीर्ष'},{w:'topic',p:'विषय'},{w:'total',p:'कुल'},{w:'touch',p:'स्पर्श'},{w:'tough',p:'कठिन'},{w:'tour',p:'दौरा'},{w:'tourism',p:'पर्यटन'},{w:'toward',p:'की ओर'},{w:'towel',p:'तौलिया'},{w:'tower',p:'टॉवर'},{w:'town',p:'शहर'},{w:'toy',p:'खिलौना'},{w:'trace',p:'निशान'},{w:'track',p:'पथ'},{w:'trade',p:'व्यापार'},{w:'tradition',p:'परंपरा'},{w:'traffic',p:'यातायात'},{w:'tragedy',p:'त्रासदी'},{w:'trail',p:'निशान'},{w:'train',p:'रेलगाड़ी'},{w:'transfer',p:'हस्तांतरण'},{w:'transform',p:'परिवर्तन'},{w:'translate',p:'अनुवाद'},{w:'transport',p:'परिवहन'},{w:'trap',p:'जाल'},{w:'trash',p:'कचरा'},{w:'trauma',p:'आघात'},{w:'travel',p:'यात्रा'},{w:'treat',p:'इलाज'},{w:'treatment',p:'उपचार'},{w:'treaty',p:'संधि'},{w:'tree',p:'पेड़'},{w:'trend',p:'प्रवृत्ति'},{w:'trial',p:'परीक्षण'},{w:'tribe',p:'जनजाति'},{w:'trick',p:'चाल'},{w:'trigger',p:'ट्रिगर'},{w:'trip',p:'यात्रा'},{w:'triumph',p:'विजय'},{w:'troop',p:'सेना'},{w:'trophy',p:'ट्रॉफी'},{w:'trouble',p:'परेशानी'},{w:'truck',p:'ट्रक'},{w:'true',p:'सच'},{w:'truly',p:'सचमुच'},{w:'trumpet',p:'तुरही'},{w:'trunk',p:'ट्रंक'},{w:'trust',p:'विश्वास'},{w:'truth',p:'सत्य'},{w:'try',p:'प्रयास'},{w:'tube',p:'ट्यूब'},{w:'tune',p:'धुन'},{w:'tunnel',p:'सुरंग'},{w:'turkey',p:'टर्की'},{w:'turn',p:'मोड़'},{w:'tutor',p:'शिक्षक'},{w:'twelve',p:'बारह'},{w:'twenty',p:'बीस'},{w:'twice',p:'दो बार'},{w:'twin',p:'जुड़वां'},{w:'twist',p:'मोड़'},{w:'two',p:'दो'},{w:'type',p:'प्रकार'},{w:'typical',p:'विशिष्ट'}],
+        'u': [{w:'ugly',p:'कुरूप'},{w:'ultimate',p:'अंतिम'},{w:'umbrella',p:'छाता'},{w:'unable',p:'असमर्थ'},{w:'unaware',p:'अनजान'},{w:'uncle',p:'चाचा'},{w:'uncomfortable',p:'असुविधाजनक'},{w:'under',p:'के अंतर्गत'},{w:'undergo',p:'गुजरना'},{w:'understand',p:'समझना'},{w:'undertake',p:'हाथ में लेना'},{w:'unemployed',p:'बेरोजगार'},{w:'unfortunately',p:'दुर्भाग्य से'},{w:'uniform',p:'वर्दी'},{w:'union',p:'संघ'},{w:'unique',p:'अद्वितीय'},{w:'unit',p:'इकाई'},{w:'unite',p:'एकजुट'},{w:'unity',p:'एकता'},{w:'universal',p:'सार्वभौमिक'},{w:'universe',p:'ब्रह्मांड'},{w:'university',p:'विश्वविद्यालय'},{w:'unknown',p:'अज्ञात'},{w:'unless',p:'जब तक'},{w:'unlike',p:'के विपरीत'},{w:'unlikely',p:'असंभव'},{w:'unload',p:'उतारना'},{w:'unlock',p:'खोलना'},{w:'unnecessary',p:'अनावश्यक'},{w:'unpack',p:'खोलना'},{w:'until',p:'जब तक'},{w:'unusual',p:'असामान्य'},{w:'up',p:'ऊपर'},{w:'update',p:'अद्यतन'},{w:'upon',p:'ऊपर'},{w:'upper',p:'ऊपरी'},{w:'upset',p:'परेशान'},{w:'upstairs',p:'ऊपर'},{w:'urban',p:'शहरी'},{w:'urge',p:'आग्रह'},{w:'us',p:'हम'},{w:'use',p:'उपयोग'},{w:'used',p:'इस्तेमाल किया'},{w:'useful',p:'उपयोगी'},{w:'user',p:'उपयोगकर्ता'},{w:'usual',p:'सामान्य'},{w:'usually',p:'आमतौर पर'},{w:'utility',p:'उपयोगिता'}],
+        'v': [{w:'vacation',p:'छुट्टी'},{w:'vacuum',p:'निर्वात'},{w:'vague',p:'अस्पष्ट'},{w:'valid',p:'वैध'},{w:'valley',p:'घाटी'},{w:'valuable',p:'मूल्यवान'},{w:'value',p:'मूल्य'},{w:'van',p:'वैन'},{w:'vanish',p:'गायब'},{w:'variety',p:'विविधता'},{w:'various',p:'विभिन्न'},{w:'vary',p:'भिन्न'},{w:'vast',p:'विशाल'},{w:'vegetable',p:'सब्जी'},{w:'vehicle',p:'वाहन'},{w:'vein',p:'नस'},{w:'venture',p:'उद्यम'},{w:'verbal',p:'मौखिक'},{w:'verdict',p:'फैसला'},{w:'version',p:'संस्करण'},{w:'versus',p:'बनाम'},{w:'vertical',p:'खड़ा'},{w:'very',p:'बहुत'},{w:'vessel',p:'पोत'},{w:'veteran',p:'अनुभवी'},{w:'via',p:'के माध्यम से'},{w:'victim',p:'पीड़ित'},{w:'victory',p:'विजय'},{w:'video',p:'वीडियो'},{w:'view',p:'दृश्य'},{w:'village',p:'गांव'},{w:'violate',p:'उल्लंघन'},{w:'violence',p:'हिंसा'},{w:'virtual',p:'आभासी'},{w:'virtue',p:'गुण'},{w:'virus',p:'विषाणु'},{w:'visa',p:'वीजा'},{w:'visible',p:'दृश्यमान'},{w:'vision',p:'दृष्टि'},{w:'visit',p:'मिलने जाना'},{w:'visitor',p:'आगंतुक'},{w:'visual',p:'दृश्य'},{w:'vital',p:'महत्वपूर्ण'},{w:'voice',p:'आवाज'},{w:'volume',p:'आयतन'},{w:'volunteer',p:'स्वयंसेवक'},{w:'vote',p:'मतदान'},{w:'vow',p:'शपथ'},{w:'vowel',p:'स्वर'},{w:'voyage',p:'समुद्री यात्रा'}],
+        'w': [{w:'wage',p:'मजदूरी'},{w:'waist',p:'कमर'},{w:'wait',p:'इंतजार'},{w:'wake',p:'जागना'},{w:'walk',p:'चलना'},{w:'wall',p:'दीवार'},{w:'wallet',p:'बटुआ'},{w:'wander',p:'घूमना'},{w:'want',p:'चाहना'},{w:'war',p:'युद्ध'},{w:'warehouse',p:'गोदाम'},{w:'warm',p:'गरम'},{w:'warn',p:'चेतावनी'},{w:'wash',p:'धोना'},{w:'waste',p:'बर्बाद'},{w:'watch',p:'घड़ी'},{w:'water',p:'पानी'},{w:'wave',p:'लहर'},{w:'way',p:'रास्ता'},{w:'we',p:'हम'},{w:'weak',p:'कमजोर'},{w:'wealth',p:'धन'},{w:'weapon',p:'हथियार'},{w:'wear',p:'पहनना'},{w:'weather',p:'मौसम'},{w:'web',p:'वेब'},{w:'wedding',p:'शादी'},{w:'week',p:'सप्ताह'},{w:'weekend',p:'सप्ताहांत'},{w:'weigh',p:'वजन'},{w:'weight',p:'वजन'},{w:'weird',p:'अजीब'},{w:'welcome',p:'स्वागत'},{w:'welfare',p:'कल्याण'},{w:'well',p:'कुंआ'},{w:'west',p:'पश्चिम'},{w:'wet',p:'गीला'},{w:'whale',p:'व्हेल'},{w:'what',p:'क्या'},{w:'whatever',p:'जो कुछ'},{w:'wheat',p:'गेहूं'},{w:'wheel',p:'पहिया'},{w:'when',p:'कब'},{w:'whenever',p:'जब भी'},{w:'where',p:'कहां'},{w:'whereas',p:'जबकि'},{w:'whether',p:'चाहे'},{w:'which',p:'कौन सा'},{w:'while',p:'जबकि'},{w:'whisper',p:'फुसफुसाना'},{w:'white',p:'सफेद'},{w:'who',p:'कौन'},{w:'whole',p:'पूरा'},{w:'whom',p:'किसको'},{w:'whose',p:'किसका'},{w:'why',p:'क्यों'},{w:'wide',p:'चौड़ा'},{w:'widow',p:'विधवा'},{w:'width',p:'चौड़ाई'},{w:'wife',p:'पत्नी'},{w:'wild',p:'जंगली'},{w:'will',p:'मर्जी'},{w:'win',p:'जीतना'},{w:'wind',p:'हवा'},{w:'window',p:'खिड़की'},{w:'wine',p:'शराब'},{w:'wing',p:'पंख'},{w:'winner',p:'विजेता'},{w:'winter',p:'सर्दी'},{w:'wipe',p:'पोंछना'},{w:'wire',p:'तार'},{w:'wisdom',p:'बुद्धिमत्ता'},{w:'wise',p:'बुद्धिमान'},{w:'wish',p:'इच्छा'},{w:'with',p:'साथ'},{w:'withdraw',p:'निकालना'},{w:'within',p:'अंदर'},{w:'without',p:'बिना'},{w:'witness',p:'गवाह'},{w:'wolf',p:'भेड़िया'},{w:'woman',p:'महिला'},{w:'wonder',p:'आश्चर्य'},{w:'wood',p:'लकड़ी'},{w:'wool',p:'ऊन'},{w:'word',p:'शब्द'},{w:'work',p:'काम'},{w:'world',p:'दुनिया'},{w:'worry',p:'चिंता'},{w:'worth',p:'लायक'},{w:'would',p:'होगा'},{w:'wound',p:'घाव'},{w:'wrap',p:'लपेटना'},{w:'wrestle',p:'कुश्ती'},{w:'wrist',p:'कलाई'},{w:'write',p:'लिखना'},{w:'wrong',p:'गलत'}],
+        'x': [{w:'xenon',p:'क्सीनन'},{w:'xenophobia',p:'ज़ेनोफोबिया'},{w:'xylophone',p:'जलतरंग'}],
+        'y': [{w:'yacht',p:'नाव'},{w:'yard',p:'गज'},{w:'yawn',p:'जम्हाई'},{w:'yeah',p:'हाँ'},{w:'year',p:'साल'},{w:'yell',p:'चिल्लाना'},{w:'yellow',p:'पीला'},{w:'yes',p:'हाँ'},{w:'yesterday',p:'कल'},{w:'yet',p:'अभी तक'},{w:'yield',p:'उपज'},{w:'you',p:'आप'},{w:'young',p:'जवान'},{w:'your',p:'आपका'},{w:'youth',p:'जवानी'}],
+        'z': [{w:'zebra',p:'ज़ेबरा'},{w:'zero',p:'शून्य'},{w:'zone',p:'क्षेत्र'},{w:'zoo',p:'चिड़ियाघर'},{w:'zoom',p:'ज़ूम'}]
+    };
+    
+    // --- UTILITY FUNCTIONS ---
+    function normalizeString(str) { return str ? str.toLowerCase().trim() : ""; }
+    async function apiFetch(url) { try { const r=await fetch(url); if(!r.ok)return null; return await r.json(); } catch(e){console.error("API Fetch Error:",e); return null;} }
+    
+    // --- WARNING & ERROR HANDLING ---
+    function showContentWarning(message) {
+        alert(message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit";
+        englishWordInput.focus();
+        resumeTimer();
+    }
+    
+    function handleMajorError(reason) {
+        loseLife();
+        if (lifelines > 0) {
+            alert(reason);
+            systemTurn(currentLetter.toLowerCase());
+        }
+    }
+
+    // --- SCREEN & NAVIGATION LOGIC ---
+    function showScreen(screenId) {
+        allScreens.forEach(screen => screen.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        if (screenHistory[screenHistory.length - 1] !== screenId) {
+            screenHistory.push(screenId);
+        }
+    }
+
+    function goBack() {
+        if (isGameActive) {
+            quitModalTitle.textContent = "Leave Match?";
+            quitModalText.textContent = "Are you sure you want to leave the current game?";
+            quitModal.style.display = 'flex';
+        } else if (screenHistory.length > 1) {
+            screenHistory.pop();
+            const lastScreenId = screenHistory[screenHistory.length - 1];
+            showScreen(lastScreenId);
+        } else {
+            quitModalTitle.textContent = "Quit Game?";
+            quitModalText.textContent = "Are you sure you want to exit?";
+            quitModal.style.display = 'flex';
+        }
+    }
+
+    window.history.pushState({ page: 1 }, "", "");
+    window.onpopstate = function(event) {
+        window.history.pushState({ page: 1 }, "", "");
+        goBack();
+    };
+
+    // --- [THE FIX] Corrected Core Game Logic ---
+    async function handleSubmission() {
+        pauseTimer();
+        submitBtn.disabled = true; submitBtn.textContent = "Checking...";
+        const englishWord = normalizeString(englishWordInput.value);
+
+        // --- Minor Errors (Warning Only) ---
+        if (!englishWord) { showContentWarning("Please enter a word."); return; }
+        if (usedWords.has(englishWord)) { showContentWarning("This word has already been used!"); return; }
+        
+        // --- Major Errors (Lose a Life) ---
+        if (englishWord.charAt(0).toUpperCase() !== currentLetter) { handleMajorError("Wrong starting letter! You lost a life."); return; }
+        
+        const flatWordBank = Object.values(WORD_BANK).flat().map(item => item.w);
+        const wordExistsInBank = flatWordBank.includes(englishWord);
+        const apiResult = wordExistsInBank ? [{}] : await apiFetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${englishWord}`);
+
+        if (!Array.isArray(apiResult)) { handleMajorError(`'${capitalize(englishWord)}' is not a real word. You lost a life.`); return; }
+
+        // --- If all checks pass, it's a correct attempt ---
+        handleCorrectAttempt(englishWord);
+    }
+    
+    async function handleCorrectAttempt(word) {
+        score += 10; updateUI(); usedWords.add(word);
+        const displayMeaning = await getHindiMeaning(word);
+        const historyText = displayMeaning ? `${capitalize(word)} - ${displayMeaning} (You)` : `${capitalize(word)} (You)`;
+        wordList.innerHTML += `<span>${historyText}</span>`;
+        setTimeout(() => systemTurn(word.slice(-1)), 100);
+    }
+    
+    async function getHindiMeaning(word) {
+        const flatWordBank = Object.values(WORD_BANK).flat();
+        const trustedPair = flatWordBank.find(item => item.w === word);
+        if (trustedPair && trustedPair.p) return trustedPair.p;
+        const apiData = await apiFetch(`https://api.mymemory.translated.net/get?q=${word}&langpair=en|hi`);
+        if(apiData&&apiData.matches){for(const m of apiData.matches){const t=m.translation;if(t&&t.length<30&&!t.includes('http'))return t;}}
+        return null;
+    }
+
+    async function systemTurn(playerLastLetter, isFirstTurn = false) {
+        systemWordDisplay.innerHTML = `<i>App is thinking...</i>`; submitBtn.disabled = true;
+        let systemWord = null;
+        if (isFirstTurn) { systemWord = "apple"; }
+        else {
+            const letter = playerLastLetter.toLowerCase();
+            let candidates = (WORD_BANK[letter] || []).map(item => item.w).filter(w => !usedWords.has(w));
+            if (candidates.length === 0) {
+                const data = await apiFetch(`https://api.datamuse.com/words?sp=${letter}*&max=50`);
+                if(data) candidates = data.map(d=>d.word).filter(w => /^[a-z]{3,}$/.test(w) && !usedWords.has(w));
+            }
+            if (candidates.length === 0) { gameOver(true, "You are a true Word Master!"); return; }
+            if (gameDifficulty === 'medium') systemWord = candidates[Math.floor(Math.random() * candidates.length)];
+            else {
+                const hardLetters = ['x', 'y', 'z', 'q'];
+                if (gameDifficulty === 'easy') {
+                    const easyCandidates = candidates.filter(w => !hardLetters.includes(w.slice(-1)));
+                    if (easyCandidates.length > 0) candidates = easyCandidates;
+                }
+                const scoredCandidates = candidates.map(word => ({ word, score: (letterPromptStats[word.slice(-1)] || 0) }));
+                if (gameDifficulty === 'easy') scoredCandidates.sort((a, b) => a.score - b.score);
+                else scoredCandidates.sort((a, b) => b.score - a.score);
+                systemWord = scoredCandidates[0].word;
+            }
+        }
+        
+        const displayMeaning = await getHindiMeaning(systemWord);
+        systemWordDisplay.innerHTML = `System's Word: <strong>${capitalize(systemWord)}</strong> - ${displayMeaning || ''}`;
+        usedWords.add(systemWord);
+        wordList.innerHTML += `<span>${capitalize(systemWord)} - ${displayMeaning || ''} (App)</span>`;
+        
+        currentLetter = systemWord.slice(-1).toUpperCase();
+        if(!letterPromptStats[currentLetter.toLowerCase()]) letterPromptStats[currentLetter.toLowerCase()] = 0;
+        letterPromptStats[currentLetter.toLowerCase()]++;
+        
+        promptLetter.textContent = currentLetter; englishWordInput.value = ''; submitBtn.disabled = false; submitBtn.textContent = "Submit"; startTimer();
+    }
+
+    // --- STATE MANAGEMENT & TIMERS ---
+    function loseLife() { lifelines--; updateUI(); if (lifelines <= 0) gameOver(false); }
+
+    function startGame() {
+        isGameActive = true;
+        gameDifficulty = document.querySelector('input[name="difficulty"]:checked').value;
+        playerName = playerNameInput.value || 'Player';
+        timePerTurn = parseInt(timerSetupInput.value) || 30;
+        
+        switch(gameDifficulty) {
+            case 'easy': lifelines = 3; break;
+            case 'medium': lifelines = 2; break;
+            case 'hard': lifelines = 1; break;
+        }
+        
+        score = 0; usedWords = new Set(); gameStartTime = Date.now();
+        letterPromptStats = 'abcdefghijklmnopqrstuvwxyz'.split('').reduce((acc, char) => ({ ...acc, [char]: 0 }), {});
+
+        updateUI(); wordList.innerHTML = ''; createKeyboard(); showScreen('game-screen'); systemTurn(null, true);
+    }
+
+        function gameOver(playerWon = false, message = "") {
+        isGameActive = false; pauseTimer();
+        const totalTime = Date.now() - gameStartTime;
+        const totalTimeString = formatTotalTime(totalTime);
+        
+        gameOverTitle.textContent = playerWon ? "You Win!" : "Game Over!";
+        playerFinalName.textContent = message || (playerWon ? `Congratulations, ${playerName}!` : `Good try, ${playerName}!`);
+        finalScoreDisplay.textContent = score;
+        finalDifficultyDisplay.textContent = capitalize(gameDifficulty);
+        totalTimeDisplay.textContent = totalTimeString;
+        
+        // Show the reward ad button only if the player lost but could continue
+        if (!playerWon && lifelines > 0 && window.$agent) { 
+            rewardAdBtn.style.display = 'block'; 
+        } else {
+            rewardAdBtn.style.display = 'none';
+        }
+        
+        updateUserHistory(playerName, score, gameDifficulty, totalTimeString);
+        finalWordList.innerHTML = document.getElementById('word-list').innerHTML;
+        showScreen('game-over-screen');
+    }
+    
+    function pauseTimer() { clearInterval(timerInterval); }
+    function resumeTimer() {
+        if (timeLeft <= 0) return;
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerDisplay.textContent = formatTime(timeLeft);
+            if (timeLeft <= 0) {
+                pauseTimer();
+                handleMajorError("Time's up! You lost a life.");
+            }
+        }, 1000);
+    }
+    function startTimer() { pauseTimer(); timeLeft = timePerTurn; timerDisplay.textContent = formatTime(timeLeft); resumeTimer(); }
+    
+    function updateUI() { scoreDisplay.textContent = score; lifelinesDisplay.innerHTML = '❤️'.repeat(lifelines); }
+    function formatTime(s) { const m=Math.floor(s/60); const r=s%60; return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`; }
+    function formatTotalTime(ms) { return formatTime(Math.floor(ms / 1000)); }
+    function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+    // --- OTHER FEATURES ---
+    function updateUserHistory(p, s, d, t) {
+        const result = { name:p, score:s, difficulty:d, time:t, date:new Date().toLocaleDateString() };
+        let history = JSON.parse(localStorage.getItem('funtakshariHistory')) || [];
+        history.unshift(result); history = history.slice(0, 5);
+        localStorage.setItem('funtakshariHistory', JSON.stringify(history));
+    }
+    function displayUserHistory() {
+        let history = JSON.parse(localStorage.getItem('funtakshariHistory')) || [];
+        if (history.length === 0) { historyContainer.style.display = 'none'; return; }
+        historyContainer.style.display = 'block'; historyList.innerHTML = '';
+        history.forEach(r => {
+            const li = document.createElement('li');
+            const details = r.difficulty ? `(${capitalize(r.difficulty)}, ${r.time})` : '';
+            li.innerHTML = `<span>${r.name} - ${r.score} pts</span> <span>${r.date} ${details}</span>`;
+            historyList.appendChild(li);
+        });
+    }
+    function createKeyboard() {
+        keyboardContainer.innerHTML = ''; const l=["qwertyuiop","asdfghjkl","zxcvbnm"];
+        l.forEach(r=>{const d=document.createElement('div');d.className='keyboard-row';for(const c of r){const k=document.createElement('button');k.textContent=c;k.className='key';k.dataset.key=c;d.appendChild(k);}keyboardContainer.appendChild(d);});
+        const s=document.createElement('div');s.className='keyboard-row';s.innerHTML=`<button class="key special" data-key="enter">Enter</button><button class="key special" data-key="backspace">Backspace</button>`;keyboardContainer.appendChild(s);
+    }
+    
+    // --- EVENT LISTENERS ---
+    startGameBtn.addEventListener('click', startGame);
+        playAgainBtn.addEventListener('click', () => { 
+        if (window.$agent) {
+            // If in the app, show a full-screen ad before starting a new game
+            $agent.trigger('show_interstitial_ad');
+        }
+        isGameActive = false;
+        finalWordList.innerHTML = ''; 
+        displayUserHistory(); 
+        screenHistory.length = 1;
+        showScreen('welcome-screen'); 
+    });
+    shareBtn.addEventListener('click', () => { const txt=`I scored ${score} on ${gameDifficulty} mode in Fun-takshari!`; if(navigator.share) navigator.share({title:'Fun-takshari Challenge!',text:txt,url:window.location.href}); else alert("Sharing not supported.");});
+    keyboardContainer.addEventListener('click', (e) => { const k = e.target.dataset.key; if (!k) return; if (k === 'enter') handleSubmission(); else if (k === 'backspace') englishWordInput.value = englishWordInput.value.slice(0, -1); else englishWordInput.value += k; });
+    
+    quitNoBtn.addEventListener('click', () => {
+        quitModal.style.display = 'none';
+    });
+    quitYesBtn.addEventListener('click', () => {
+        if (isGameActive) {
+            isGameActive = false;
+            quitModal.style.display = 'none';
+            screenHistory.length = 1;
+            showScreen('welcome-screen');
+            pauseTimer();
+        } else {
+            window.close();
+        }
+    });
+
+    let pressTimer;
+    mainTitle.addEventListener('mousedown', () => pressTimer = setTimeout(() => {
+        adminPanel.style.display = adminPanel.style.display === 'none' ? 'block' : 'none';
+    }, 2000));
+    mainTitle.addEventListener('mouseup', () => clearTimeout(pressTimer));
+    mainTitle.addEventListener('touchstart', () => pressTimer = setTimeout(() => {
+        adminPanel.style.display = adminPanel.style.display === 'none' ? 'block' : 'none';
+    }, 2000));
+    mainTitle.addEventListener('touchend', () => clearTimeout(pressTimer));
+    
+    // [THE FIX] This was the line I kept forgetting. It connects the button to the function.
+    submitBtn.addEventListener('click', handleSubmission);
+        rewardAdBtn.addEventListener('click', () => {
+        if (window.$agent) {
+            // Listen for when the ad is successfully completed by the user
+            $agent.on("ad.reward", function(e, data) {
+                lifelines++;
+                updateUI();
+                alert('You got an extra life! ❤️ The game will now resume.');
+                
+                // Hide the button and resume the game
+                rewardAdBtn.style.display = 'none';
+                showScreen('game-screen');
+                isGameActive = true;
+                systemTurn(currentLetter.toLowerCase());
+            });
+            // Trigger the action to show the ad
+            $agent.trigger('show_reward_ad');
+        }
+    });
+
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => { displayUserHistory(); });
+</script>
+</body>
+</html>
