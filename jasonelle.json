@@ -49,7 +49,7 @@
         "body": {
           "background": {
             "type": "html",
-            "url": "YOUR_GAME_URL_HERE" 
+            "url": "https://raw.githubusercontent.com/kmishra126194-max/funtakshari-game-assets/refs/heads/main/Index.html" 
           },
           "footer": {
             "type": "banner",
